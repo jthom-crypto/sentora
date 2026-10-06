@@ -1,0 +1,1169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KX95QKZWM5"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-KX95QKZWM5');
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Institutional DeFi Operations Desk | Justin Thom</title>
+<meta name="description" content="A simulated Sentora operations desk supporting an institutional client across three Sentora-curated Morpho vaults, built on public Morpho vault data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2A41; --navy2:#2C3E5A; --bronze:#A0712B; --bronze-soft:#E9DCC6;
+  --paper:#F6F2EA; --card:#FFFDF8; --ink:#1B2A41; --ink2:#3A4456; --muted:#6B7280;
+  --line:#E2DACB; --line2:#EEE7DA;
+  --good:#2E7D4F; --good-bg:#E5F2EA; --warn:#B26A00; --warn-bg:#FBF0DD; --crit:#B23A3A; --crit-bg:#F8E3E3;
+  --info:#2C3E5A; --info-bg:#E6ECF5;
+  --bar:#2C3E5A; --bar2:#9AA8BC;
+  --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}
+a{color:var(--navy)}
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+
+header.top{background:var(--card);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;justify-content:space-between;align-items:center;height:60px;gap:12px}
+.top .name{font-weight:600;font-size:17px}
+.top .role{font-size:14px;color:var(--ink2)}
+a.role{text-decoration:none}
+a.role:hover{text-decoration:underline}
+.rule{height:3px;background:var(--bronze)}
+
+.intro{padding:22px 0 6px;display:flex;justify-content:space-between;gap:24px;align-items:flex-end;flex-wrap:wrap}
+.intro h1{margin:0 0 6px;font-size:26px;font-weight:600}
+.intro p{margin:0;color:var(--ink2);max-width:780px}
+.src{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right;min-width:260px;max-width:360px;margin-left:auto}
+.src b{color:var(--ink)}
+
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-top:14px;overflow-x:auto}
+nav.tabs button{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:1px;background:none;border:0;padding:12px 14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+nav.tabs button:hover{color:var(--ink)}
+nav.tabs button.on{color:var(--ink);border-bottom-color:var(--bronze)}
+nav.tabs .count{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--bronze-soft);color:var(--ink);font-size:11px;text-align:center}
+
+section.tab{display:none;padding:20px 0 40px}
+section.tab.on{display:block}
+
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:3fr 2fr}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+.card h2{margin:0 0 2px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card .lead{margin:0 0 12px;color:var(--muted);font-size:12.5px}
+.mt{margin-top:16px}
+
+.qgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.q{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.q:hover{border-color:var(--bronze)}
+.q .l{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.q .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.q .s{font-size:12px;color:var(--ink2)}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:0;color:var(--ink2);text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:bottom;line-height:1.3}
+td{padding:9px 8px;border-bottom:1px solid var(--line2);vertical-align:middle}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td.m{font-family:var(--mono);font-size:12px}
+tr.total td{font-weight:600;border-top:1px solid var(--line);background:transparent!important}
+tr.click{cursor:pointer}
+tr.click:hover td{background:#FBF7EF}
+tr.sel td{background:#F3ECDF}
+.tbl-wrap{overflow-x:auto}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.pill.good{background:var(--good-bg);color:var(--good)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.crit{background:var(--crit-bg);color:var(--crit)}
+.pill.neutral{background:#ECEFF3;color:var(--ink2)}
+.pill.info{background:var(--info-bg);color:var(--info)}
+.tag{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.8px;text-transform:uppercase;padding:2px 7px;border-radius:4px;border:1px solid}
+.tag.live{color:var(--good);border-color:#9CC9AD;background:var(--good-bg)}
+.tag.snap{color:var(--warn);border-color:#E5C48E;background:var(--warn-bg)}
+.tag.sim{color:var(--ink2);border-color:#C9CFD8;background:#F1F3F6}
+
+.btn{font-family:var(--sans);font-size:12.5px;font-weight:500;border-radius:6px;padding:7px 12px;border:1px solid var(--navy);background:var(--navy);color:#fff;cursor:pointer}
+.btn:hover{background:var(--navy2)}
+.btn.ghost{background:transparent;color:var(--navy)}
+.btn.ghost:hover{background:#EEF1F5}
+.btn.danger{background:transparent;color:var(--crit);border-color:var(--crit)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.sm{padding:4px 9px;font-size:12px}
+select,input[type=number]{font-family:var(--sans);font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spacer{flex:1}
+label.f{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.note{font-size:12px;color:var(--muted)}
+
+.stack{display:flex;height:16px;border-radius:0 4px 4px 0;overflow:hidden;gap:2px;background:var(--card)}
+.stack div{height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.hbar{display:grid;grid-template-columns:200px 1fr 170px;gap:10px;align-items:center;margin:8px 0;font-size:12.5px}
+.hbar .track{height:14px;background:var(--line2);border-radius:0 4px 4px 0;position:relative;overflow:hidden}
+.hbar .fill{position:absolute;left:0;top:0;bottom:0;background:var(--bar2);border-radius:0 4px 4px 0}
+.hbar .fill.in{background:var(--bar)}
+.hbar .v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.stages{display:flex;align-items:center;gap:0}
+.stages span{width:12px;height:12px;border-radius:50%;background:var(--line);border:2px solid var(--line)}
+.stages span.done{background:var(--bar);border-color:var(--bar)}
+.stages span.cur{background:var(--card);border-color:var(--bar)}
+.stages span.fail{background:var(--crit);border-color:var(--crit)}
+.stages span.delay{background:var(--card);border-color:var(--warn)}
+.stages i{width:12px;height:2px;background:var(--line)}
+.stages i.done{background:var(--bar)}
+
+.detail h3{margin:0 0 6px;font-size:15px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:6px 10px;font-size:13px;margin:10px 0}
+.kv .k{color:var(--muted);font-size:12px}
+.timeline{list-style:none;margin:8px 0 14px;padding:0;border-left:2px solid var(--line);font-size:13px}
+.timeline li{padding:3px 0 8px 12px;position:relative}
+.timeline li:before{content:'';position:absolute;left:-6px;top:8px;width:10px;height:10px;border-radius:50%;background:var(--bar)}
+.timeline li.bad:before{background:var(--crit)}
+.timeline li.wait:before{background:var(--warn)}
+.timeline .t{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-right:6px}
+.callout{background:#F3ECDF;border-left:3px solid var(--bronze);padding:10px 12px;border-radius:0 6px 6px 0;font-size:13px;color:var(--ink2);margin-top:12px}
+.callout.crit{background:var(--crit-bg);border-left-color:var(--crit)}
+.callout.good{background:var(--good-bg);border-left-color:var(--good)}
+.ex-ev{font-size:12px;color:var(--ink2)}
+pre.report{font-family:var(--mono);font-size:12px;line-height:1.55;background:#FBF8F2;border:1px solid var(--line);border-radius:6px;padding:14px;white-space:pre-wrap;margin:0;max-height:640px;overflow:auto}
+.changes{list-style:none;margin:0;padding:0}
+.changes li{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line2);font-size:13px}
+.changes li:last-child{border-bottom:0}
+.changes .d{margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.est{font-style:italic;color:var(--warn)}
+.est sup,sup.est{font-size:9px;font-style:normal;font-family:var(--mono);margin-left:2px;color:var(--warn)}
+.na{color:var(--muted)}
+.warnline{color:var(--warn)}
+.prov{font-size:12px;color:var(--muted);margin:10px 0 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.roles{margin:8px 0 6px;padding-left:18px;color:var(--ink2)}
+.roles li{margin:2px 0}
+.chk{width:100%;margin:8px 0 12px;font-size:12.5px}
+.chk td{padding:5px 6px;border-bottom:1px solid var(--line2)}
+.chk td.k{color:var(--muted);width:120px;font-size:12px}
+#fcTbl td{white-space:nowrap}
+#reconTbl td.n,#posTbl td.n{white-space:nowrap}
+#fcTbl td:nth-child(2){white-space:normal}
+.calc{border-bottom:1px dotted var(--ink2);cursor:help}
+table.data tbody tr:nth-child(even) td{background:#FAF6EE}
+table.data tbody tr:hover td{background:#F3ECDF}
+#vaultTbl{table-layout:fixed;min-width:860px}
+#vaultTbl td,#vaultTbl th{white-space:nowrap}
+#vaultTbl td:first-child{white-space:normal}
+#vaultTbl .sep,#liqTbl .sep{border-left:1px solid var(--line)}
+#liqTbl td.n{white-space:nowrap}
+footer{border-top:1px solid var(--line);padding:18px 0 30px;color:var(--muted);font-size:12px}
+footer p{margin:0 0 6px}
+
+@media (max-width:1050px){
+  .qgrid{grid-template-columns:repeat(2,1fr)}
+  .g2,.g3{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .qgrid{grid-template-columns:1fr}
+  .hbar{grid-template-columns:110px 1fr 90px}
+  .src{text-align:left}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="role" href="../" title="All work samples">Independent Work Sample</a>
+    <div class="name">Justin Thom</div>
+  </div>
+  <div class="rule"></div>
+</header>
+
+<main class="wrap">
+  <div class="intro">
+    <div>
+      <h1>Institutional DeFi Operations Desk</h1>
+      <p>A simulated Sentora operations desk supporting an institutional client across three Sentora-curated Morpho vaults.</p>
+      <ul class="roles">
+        <li><b>Client:</b> Holds assets in its own Fireblocks custody, requests transactions, and signs.</li>
+        <li><b>Operations:</b> Prepares transactions, tracks execution, reconciles positions, and reports.</li>
+        <li><b>Vault data:</b> Sourced from Morpho's public API.</li>
+      </ul>
+      <p class="note">Client activity, custody approvals, and internal records are simulated. Values are labeled observed, estimated, or simulated.</p>
+    </div>
+    <div class="src" id="srcBox">Vault data <b>loading...</b></div>
+  </div>
+  <p class="prov"><span class="tag live">Observed</span> <span class="tag snap">Estimated</span> <span class="tag sim">Simulated</span></p>
+
+  <nav class="tabs">
+    <button class="on" data-tab="overview">Overview</button>
+    <button data-tab="positions">Positions</button>
+    <button data-tab="tx">Transactions<span class="count" id="cTx">0</span></button>
+    <button data-tab="liq">Liquidity</button>
+    <button data-tab="ex">Exceptions<span class="count" id="cEx">0</span></button>
+    <button data-tab="report">Daily Report</button>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section class="tab on" id="tab-overview">
+    <div class="qgrid" id="questions"></div>
+    <div class="grid g3 mt">
+      <div class="card">
+        <h2>Priority Exceptions <span class="tag sim">Simulated + Observed</span></h2>
+        <p class="lead">Open items, highest severity first.</p>
+        <div class="tbl-wrap"><table id="ovEx" class="data"><thead><tr><th>Item</th><th class="n">Amount</th><th>Owner</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="card">
+        <h2>Daily Activity</h2>
+        <p class="lead">Yield accrual since the prior day and today's recorded movements.</p>
+        <ul class="changes" id="changes"></ul>
+      </div>
+    </div>
+    <div class="card mt">
+      <h2>Sentora Vaults in Scope <span class="tag" id="vaultTag">Observed</span></h2>
+      <p class="lead">Public vault state. Share price is quoted in the underlying asset per vault share.</p>
+      <div class="tbl-wrap"><table id="vaultTbl" class="data"><colgroup id="vaultCols"></colgroup><thead></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- POSITIONS -->
+  <section class="tab" id="tab-positions">
+    <div class="card">
+      <h2>Portfolio Positions <span class="tag sim">Simulated holdings</span> <span class="tag" id="posTag">Observed prices</span></h2>
+      <p class="lead">Quantities are in shares or tokens. USD value = shares × underlying per share × underlying USD price.</p>
+      <div id="capStack"></div>
+      <div class="tbl-wrap mt"><table id="posTbl" class="data"><thead><tr><th>Holding</th><th class="n">Quantity</th><th class="n">Underlying per share</th><th class="n">Underlying</th><th class="n">USD price</th><th class="n">Value (USD)</th><th class="n">% of total</th><th class="n">Share of vault</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card mt">
+      <h2>Underlying Market Exposure <span class="tag" id="ltTag">Observed</span> <span class="tag sim">Simulated holdings</span></h2>
+      <p class="lead">The client's pro-rata share of each vault's adapter allocations: the markets and vaults the client is ultimately lending into.</p>
+      <div class="tbl-wrap"><table id="ltTbl" class="data"><thead><tr><th>Vault</th><th>Allocation</th><th class="n">Vault allocation</th><th class="n">Client look-through</th><th class="n">Market utilization</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card mt">
+      <h2>Position Reconciliation <span class="tag sim">Simulated records</span></h2>
+      <p class="lead">Sentora's record of the client position vs the client's custody wallet on-chain. Quantity breaks compare shares or tokens; price breaks compare the share price used to value the record. Tolerance: $1,000.</p>
+      <div class="tbl-wrap"><table id="reconTbl" class="data"><thead><tr><th>Holding</th><th class="n">Record qty</th><th class="n">On-chain qty</th><th class="n">Record price</th><th class="n">Live price</th><th class="n">Quantity diff</th><th class="n">Price diff</th><th class="n">Net diff</th><th>Break type</th><th>Explained by</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- TRANSACTIONS -->
+  <section class="tab" id="tab-tx">
+    <div class="grid g3">
+      <div class="card">
+        <h2>Transaction Workflow <span class="tag sim">Simulated</span></h2>
+        <p class="lead">Client requests, Sentora ops prepares, client signs in Fireblocks, broadcast, confirmed, reconciled. Any amendment or replacement goes back for a new signature. Balances, allowance, gas, and vault liquidity are re-checked at broadcast and at execution.</p>
+        <div class="tbl-wrap"><table id="txTbl" class="data"><thead><tr><th>ID</th><th>Type</th><th>Vault</th><th class="n">Amount</th><th>Progress</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="card detail" id="txDetail"><p class="note">Select a transaction to see its checklist, history, and next step.</p></div>
+    </div>
+  </section>
+
+  <!-- LIQUIDITY -->
+  <section class="tab" id="tab-liq">
+    <div class="card">
+      <h2>Withdrawal Capacity <span class="tag" id="liqTag">Observed</span> <span class="tag sim">Simulated reservations</span></h2>
+      <p class="lead">Standard withdrawal liquidity is idle assets plus what the vault's liquidity adapter can release. Force-deallocation is a second route that pulls from other adapters. It requires an additional deallocation step, potentially bundled with the withdrawal, and a penalty may apply. The two figures can overlap. Lent assets become withdrawable as borrowers repay, new lenders supply the market, or the curator reallocates.</p>
+      <div class="tbl-wrap"><table id="liqTbl" class="data"><thead><tr><th>Vault</th><th class="n sep">Idle</th><th class="n">Standard<br>liquidity</th><th class="n">Session<br>changes</th><th class="n">Reserved by<br>pending</th><th class="n">Available<br>now</th><th class="n sep">Force-<br>deallocation</th><th class="n sep">Client<br>position</th><th class="n">Client can<br>withdraw now</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="grid g2 mt">
+      <div class="card">
+        <h2>Withdrawal Simulator <span class="tag sim">Simulated request</span> <span class="tag" id="simTag">Observed liquidity</span></h2>
+        <p class="lead">Check a large redemption before the client submits it. Optionally assume other depositors withdraw first.</p>
+        <div class="row">
+          <label class="f">Vault<select id="wVault"></select></label>
+          <label class="f">Withdrawal (M tokens)<input type="number" id="wAmt" value="6" min="0" step="0.5" style="width:110px"></label>
+          <label class="f">Others ahead (M tokens)<input type="number" id="wAhead" value="0" min="0" step="1" style="width:110px"></label>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn ghost sm" id="presetNormal">Routine: 6M</button>
+          <button class="btn ghost sm" id="presetFull">Full client redemption</button>
+          <button class="btn ghost sm" id="presetStress">Large redemption scenario</button>
+        </div>
+        <div id="wResult"></div>
+      </div>
+      <div class="card">
+        <h2>Liquidity Sources <span class="tag" id="mktTag">Observed</span></h2>
+        <p class="lead">For the selected vault: each allocation (light) and, where market liquidity is observed, the part that market can release now (dark).</p>
+        <div id="mktBars"></div>
+        <div class="legend"><span><i style="background:var(--bar)"></i>Releasable now</span><span><i style="background:var(--bar2)"></i>Allocated</span></div>
+      </div>
+    </div>
+    <div class="card mt">
+      <h2>Funding Forecast <span class="tag sim">Simulated obligations</span></h2>
+      <p class="lead">Cash carried forward by date and asset: opening cash + inflows − outflows = closing cash. Settled cash counts only confirmed balances and can go negative when obligations exceed it. Projected cash adds signed or broadcast withdrawals and any planned vault draws, none of which have settled. When projected cash runs short, the forecast plans a draw on standard vault liquidity, and each draw reduces what is left for later dates.</p>
+      <div class="tbl-wrap"><table id="fcTbl" class="data"><thead><tr><th>Date</th><th>Item</th><th>Asset</th><th class="n">Pending inflow</th><th class="n">Outflow</th><th class="n">Planned vault draw</th><th class="n">Settled cash</th><th class="n">Projected cash</th><th class="n">Vault capacity left</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- EXCEPTIONS -->
+  <section class="tab" id="tab-ex">
+    <div class="card">
+      <h2>Open Exceptions <span class="tag sim">Simulated + Observed</span></h2>
+      <p class="lead">Breaks, failed, delayed or rejected transactions, liquidity shortfalls, and market alerts. Status moves Open → Acknowledged → Escalated → Resolved. Risk items resolve only after a fresh observation shows the condition cleared; missing data counts as unknown, not cleared.</p>
+      <div class="tbl-wrap"><table id="exTbl" class="data"><thead><tr><th>ID</th><th>Exception</th><th class="n">Amount</th><th>Evidence</th><th>Owner</th><th>Proposed action</th><th>Status</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- REPORT -->
+  <section class="tab" id="tab-report">
+    <div class="card">
+      <div class="row">
+        <div><h2>Client Daily Update <span class="tag sim">Generated</span></h2><p class="lead">The end-of-day update Sentora ops would send the client, built from every tab.</p></div>
+        <div class="spacer"></div>
+        <button class="btn ghost" id="regen">Refresh</button>
+        <button class="btn" id="copyRep">Copy report</button>
+      </div>
+      <pre class="report" id="report"></pre>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Public Morpho vault data with labeled fallback estimates. Client activity and internal records are simulated. Not affiliated with or endorsed by Sentora or Morpho.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= formatting ================= */
+const $ = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => [...el.querySelectorAll(s)];
+const usd = v => { if(v==null || !isFinite(v)) return 'n/a'; const a = Math.abs(v), s = v<0?'-':''; return a < 1e5 ? s+'$'+Math.round(a).toLocaleString('en-US') : s+'$'+(a/1e6).toFixed(2)+'M'; };
+const usd1 = v => { if(v==null || !isFinite(v)) return 'n/a'; const a = Math.abs(v), s = v<0?'-':''; return a < 1e5 ? s+'$'+Math.round(a).toLocaleString('en-US') : s+'$'+(a/1e6).toFixed(1)+'M'; };
+const susd = v => (v>0?'+':v<0?'-':'') + usd(Math.abs(v)).replace('-','');
+const usdM = v => (v==null || !isFinite(v)) ? 'n/a' : (v<0?'-':'') + '$' + (Math.abs(v)/1e6).toFixed(2) + 'M';
+const SMALL = 0.5e6;
+function groupSmall(mkts){
+  const big = mkts.filter(m=>m.alloc >= SMALL), small = mkts.filter(m=>m.alloc < SMALL);
+  if(small.length < 2) return mkts;
+  const alloc = small.reduce((a,m)=>a+m.alloc,0);
+  const mliqKnown = small.every(m=>m.mliq!=null);
+  const ut = small.filter(m=>m.util!=null).map(m=>m.util);
+  return big.concat([{id:'other', label:`Other markets (${small.length})`, alloc, mliq: mliqKnown ? small.reduce((a,m)=>a+Math.min(m.alloc,m.mliq),0) : null,
+    util:null, utilRange: ut.length ? [Math.min(...ut), Math.max(...ut)] : null, members: small.map(m=>m.label.replace(' market','')).join(', '), kind:'other'}]);
+}
+const tok = (v, sym) => { const a = Math.abs(v), s = v<0?'-':''; return (a < 1e5 ? s+Math.round(a).toLocaleString('en-US') : s+(a/1e6).toFixed(2)+'M') + ' ' + sym; };
+const N = (v,d=0) => Number(v).toLocaleString('en-US',{minimumFractionDigits:d, maximumFractionDigits:d});
+const pct = (v,d=1) => v==null ? 'n/a' : (v*100).toFixed(d) + '%';
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ICON = {good:'&#10003;', warn:'&#9888;', crit:'&#10007;', neutral:'&#8226;', info:'&#8505;'};
+const pill = (c, l) => `<span class="pill ${c}">${ICON[c]||''} ${esc(l)}</span>`;
+const short = a => a.slice(0,6) + '...' + a.slice(-4);
+const TZ = 'America/New_York';
+const hhmm = d => d.toLocaleTimeString('en-US',{timeZone:TZ, hour:'numeric', minute:'2-digit'}) + ' ET';
+const etDay = d => d.toLocaleDateString('en-US',{timeZone:TZ});
+const dateStr = d => d.toLocaleDateString('en-US',{timeZone:TZ, weekday:'short', month:'short', day:'numeric', year:'numeric'});
+const dShort = d => d.toLocaleDateString('en-US',{timeZone:TZ, weekday:'short', month:'short', day:'numeric'});
+const NOW = new Date();
+const ET_OFFSET = NOW.getTime() - new Date(NOW.toLocaleString('en-US',{timeZone:TZ})).getTime();
+const at = (h, m, dayOffset=0) => { const d = new Date(NOW.toLocaleString('en-US',{timeZone:TZ})); d.setDate(d.getDate()+dayOffset); d.setHours(h, m, 0, 0); return new Date(d.getTime() + ET_OFFSET); };
+const ago = min => new Date(NOW.getTime() - min*60000);
+const hex = n => '0x' + Array.from({length:n},()=>Math.floor(Math.random()*16).toString(16)).join('');
+
+/* ================= vault config ================= */
+// Ethereum mainnet Morpho Vault V2 addresses, cross-checked on Trading Strategy.
+// Fallback snapshot: total assets and 30d annualized net APY observed on Trading Strategy (Oct 5, 2026); all else estimated.
+const TS = 'https://tradingstrategy.ai/trading-view/vaults/';
+const SNAP_DATE = new Date('2026-10-05T16:00:00Z');
+const VAULTS = [
+  {key:'PYUSD', name:'Sentora PYUSD Main', addr:'0xb576765fb15505433af24fee2c0325895c559fb2', asset:'PYUSD', dec:6, ts:TS+'sentora-pyusd-main',
+   snap:{tvl:399.04e6, apy:.030, sp:1.0310, liqPct:.14, idlePct:.02, mkts:[.42,.33,.25]}},
+  {key:'RLUSD', name:'Sentora RLUSD Main', addr:'0x6dc58a0fdfc8d694e571dc59b9a52eeea780e6bf', asset:'RLUSD', dec:18, ts:TS+'sentora-rlusd-main',
+   snap:{tvl:465.62e6, apy:.029, sp:1.0215, liqPct:.12, idlePct:.01, mkts:[.50,.30,.20]}},
+  {key:'PRIME', name:'Sentora PRIME Main', addr:'0xc21b08c16458202593d4d9b26b9984ee67b38bbd', asset:'PYUSD', dec:6, ts:TS+'sentora-prime-main',
+   snap:{tvl:221.07e6, apy:.038, sp:1.0240, liqPct:.10, idlePct:.01, mkts:[.60,.40]}}
+];
+const V = {}; VAULTS.forEach(v => V[v.key] = v);
+let SOURCE = 'loading', FETCHED_AT = null, SRC_ERR = '';
+let PARTIAL = [];
+
+/* provenance per value: 'obs' observed, 'est' estimated, 'na' unavailable */
+function P(v, key, text){
+  const p = v.p[key], why = esc(v.why[key]||'');
+  if(p === 'est') return `<span class="est" title="Estimated: ${why}">${text}<sup>est</sup></span>`;
+  if(p === 'na' || p == null) return `<span class="na" title="${why||'Not available'}">n/a</span>`;
+  return `<span title="Observed: ${why}">${text}</span>`;
+}
+
+/* ================= Morpho API ================= */
+const API = 'https://api.morpho.org/graphql';
+async function gql(query, variables){
+  const ctl = new AbortController(); const to = setTimeout(()=>ctl.abort(), 15000);
+  try{
+    const r = await fetch(API, {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({query, variables}), signal:ctl.signal});
+    const j = await r.json();
+    const vals = j.data ? Object.values(j.data) : [];
+    if(j.errors && j.errors.length && (!j.data || vals.every(x=>x==null))) throw new Error(j.errors[0].message);
+    if(!j.data) throw new Error('HTTP ' + r.status + ', no data returned');
+    return j.data;
+  } catch(e){
+    if(e.name === 'AbortError') throw new Error('Request timed out after 15s');
+    if(e instanceof TypeError) throw new Error('Network error (' + e.message + ')');
+    throw e;
+  } finally { clearTimeout(to); }
+}
+const perVault = body => '{' + VAULTS.map((v,i)=>`v${i}: vaultV2ByAddress(address:"${v.addr}", chainId:1){ ${body} }`).join(' ') + '}';
+const Q_CORE  = 'address name totalAssets totalAssetsUsd totalSupply liquidity liquidityUsd idleAssetsUsd sharePrice asset { symbol decimals }';
+const Q_FORCE = 'forceDeallocatableLiquidityUsd';
+const Q_APY   = 'avgNetApy avgNetApyExcludingRewards';
+const Q_ADAPT = `adapters(first: 20) { items { __typename address assets assetsUsd type
+  ... on MorphoMarketV1Adapter { positions(first: 50) { items { market { marketId collateralAsset { symbol } loanAsset { symbol } } state { supplyAssets supplyAssetsUsd } } } }
+  ... on MetaMorphoAdapter { metaMorpho { address name } }
+  ... on MorphoVaultV2Adapter { innerVault { address name } } } }`;
+const Q_HIST = 'query($o: TimeseriesOptions){' + VAULTS.map((v,i)=>`v${i}: vaultV2ByAddress(address:"${v.addr}", chainId:1){ historicalState { sharePrice(options:$o){ x y } } }`).join(' ') + '}';
+
+const toNum = (raw, dec) => raw==null ? null : Number(raw) / Math.pow(10, dec);
+function scaleSP(raw, dec){
+  const sp = Number(raw); if(!isFinite(sp) || sp<=0) return null;
+  if(sp > .5 && sp < 5) return sp;
+  for(const k of [18, dec, 6, 36-dec]){ const x = sp / Math.pow(10,k); if(x > .5 && x < 5) return x; }
+  return null;
+}
+const rate = y => { if(y==null) return null; const n = Number(y); return isFinite(n) ? (Math.abs(n) > 1.5 ? n/100 : n) : null; };
+
+// Builds a fresh data object per vault; nothing from a previous fetch carries over.
+async function fetchLive(){
+  const t = new Date(); const partial = [];
+  const d = await gql(perVault(Q_CORE));
+  const out = VAULTS.map((v,i)=>{
+    const x = d['v'+i]; if(!x) throw new Error('Vault not returned by API: ' + v.name);
+    const o = {p:{}, why:{}}; const src = `Morpho API, ${hhmm(t)}`;
+    o.dec = x.asset && x.asset.decimals != null ? Number(x.asset.decimals) : v.dec;
+    const units = toNum(x.totalAssets, o.dec);
+    o.tvl = x.totalAssetsUsd != null ? x.totalAssetsUsd : null; o.p.tvl = o.tvl!=null?'obs':'na'; o.why.tvl = src + ' (totalAssetsUsd)';
+    if(o.tvl!=null && units){ o.px = o.tvl/units; o.p.px='obs'; o.why.px = src + ' (totalAssetsUsd / totalAssets)'; } else { o.px = 1; o.p.px='est'; o.why.px='Assumed $1.00 stablecoin peg'; }
+    if(o.tvl==null){ o.tvl = units*o.px; o.p.tvl='est'; o.why.tvl='Derived from totalAssets at assumed price'; }
+    o.liq = x.liquidityUsd != null ? x.liquidityUsd : (x.liquidity!=null ? toNum(x.liquidity,o.dec)*o.px : null); o.p.liq = o.liq!=null?'obs':'na'; o.why.liq = src + ' (liquidityUsd: idle + liquidity adapter)';
+    o.idle = x.idleAssetsUsd; o.p.idle = o.idle!=null?'obs':'na'; o.why.idle = src + ' (idleAssetsUsd)';
+    const sp = scaleSP(x.sharePrice, o.dec);
+    if(sp){ o.sp = sp; o.p.sp='obs'; o.why.sp = src + ' (sharePrice, underlying per share)'; }
+    else { const s = toNum(x.totalSupply, 18); o.sp = (s && units) ? units/s : v.snap.sp; o.p.sp='est'; o.why.sp='sharePrice not parseable; derived from totalAssets / totalSupply'; }
+    o.force = null; o.p.force='na'; o.why.force='Not loaded';
+    o.apyEx = null; o.apyTot = null; o.p.apyEx='na'; o.p.apyTot='na'; o.apy30 = null; o.p.apy30='na'; o.why.apy30='Live mode uses Morpho APY fields';
+    o.spY = null; o.p.spY='na';
+    o.mkts = []; o.p.alloc='na'; o.why.alloc='Not loaded';
+    return o;
+  });
+  try{ const f = await gql(perVault(Q_FORCE)); out.forEach((o,i)=>{ const y = f['v'+i] && f['v'+i].forceDeallocatableLiquidityUsd; if(y!=null){ o.force = Number(y); o.p.force='obs'; o.why.force = `Morpho API, ${hhmm(t)} (forceDeallocatableLiquidityUsd)`; } }); }
+  catch(e){ partial.push('Force-deallocatable liquidity: ' + e.message); out.forEach(o=>o.why.force='Query failed: '+e.message); }
+  try{ const a = await gql(perVault(Q_APY)); out.forEach((o,i)=>{ const r = a['v'+i]||{};
+      const ex = rate(r.avgNetApyExcludingRewards), tot = rate(r.avgNetApy);
+      if(ex!=null){ o.apyEx = ex; o.p.apyEx='obs'; o.why.apyEx='Morpho avgNetApyExcludingRewards, short-window average, net of fees, excludes incentives'; }
+      if(tot!=null){ o.apyTot = tot; o.p.apyTot='obs'; o.why.apyTot='Morpho avgNetApy, short-window average, net of fees, includes incentives'; } }); }
+  catch(e){ partial.push('APY: ' + e.message); }
+  try{
+    const a = await gql(perVault(Q_ADAPT));
+    out.forEach((o,i)=>{
+      const items = (a['v'+i] && a['v'+i].adapters && a['v'+i].adapters.items) || [];
+      const rows = [];
+      items.forEach(ad=>{
+        if(ad.positions && ad.positions.items){
+          ad.positions.items.forEach(p=>{
+            const usdv = p.state && p.state.supplyAssetsUsd != null ? p.state.supplyAssetsUsd : toNum(p.state && p.state.supplyAssets, o.dec)*o.px;
+            const coll = p.market && p.market.collateralAsset ? p.market.collateralAsset.symbol : '?';
+            const loan = p.market && p.market.loanAsset ? p.market.loanAsset.symbol : VAULTS[i].asset;
+            rows.push({id:p.market.marketId, label:`${coll} / ${loan} market`, alloc:usdv, mliq:null, util:null, kind:'market'});
+          });
+        } else {
+          const inner = ad.metaMorpho || ad.innerVault;
+          rows.push({id:ad.address, label: inner ? `Vault: ${inner.name}` : `${ad.type||ad.__typename} adapter`, alloc: ad.assetsUsd != null ? ad.assetsUsd : toNum(ad.assets, o.dec)*o.px, mliq:null, util:null, kind:'vault'});
+        }
+      });
+      o.mkts = rows.filter(r=>r.alloc > 1000).sort((a,b)=>b.alloc-a.alloc);
+      o.p.alloc='obs'; o.why.alloc=`Morpho API adapters, ${hhmm(t)}`;
+    });
+  }catch(e){ partial.push('Adapter allocations: ' + e.message); out.forEach(o=>o.why.alloc='Adapter query failed: ' + e.message); }
+  const ids = [...new Set(out.flatMap(o=>o.mkts.filter(m=>m.kind==='market').map(m=>m.id)))];
+  if(ids.length){
+    try{
+      const q = '{' + ids.map((id,i)=>`m${i}: marketById(marketId:"${id}", chainId:1){ state { liquidityAssetsUsd utilization } }`).join(' ') + '}';
+      const m = await gql(q);
+      ids.forEach((id,i)=>{ const st = m['m'+i] && m['m'+i].state; if(!st) return;
+        out.forEach(o=>o.mkts.filter(x=>x.id===id).forEach(x=>{ x.mliq = st.liquidityAssetsUsd!=null ? Number(st.liquidityAssetsUsd) : null; x.util = rate(st.utilization); x.obsAt = t; })); });
+    }catch(e){ partial.push('Market liquidity and utilization: ' + e.message); }
+  }
+  try{
+    const end = Math.floor(t.getTime()/1000);
+    const h = await gql(Q_HIST, {o:{startTimestamp:end-3*86400, endTimestamp:end, interval:'HOUR'}});
+    out.forEach((o,i)=>{
+      const pts = ((h['v'+i] && h['v'+i].historicalState && h['v'+i].historicalState.sharePrice) || []).filter(p=>p && p.y!=null);
+      const target = end - 86400;
+      let best = null; pts.forEach(p=>{ if(p.x <= target && (!best || p.x > best.x)) best = p; });
+      const y = best ? scaleSP(best.y, o.dec) : null;
+      if(y){ o.spY = y; o.p.spY='obs'; o.why.spY = `Morpho historicalState.sharePrice at ${hhmm(new Date(best.x*1000))} ${dShort(new Date(best.x*1000))}`; }
+    });
+  }catch(e){ partial.push('Share price history: ' + e.message); }
+  return {out, t, partial};
+}
+function applyData(res){
+  VAULTS.forEach((v,i)=>{ Object.assign(v, res.out[i]); });
+  VAULTS.forEach(v=>{
+    if(v.spY == null){
+      const r = v.apyEx!=null ? v.apyEx : v.apy30;
+      if(r!=null){ v.spY = v.sp / Math.pow(1 + r, 1/365); v.p.spY='est'; v.why.spY = `Implied from ${pct(r,2)} ${v.apyEx!=null?'APY ex-rewards':'30d net return (reward treatment unknown)'} with daily compounding`; }
+      else { v.spY = v.sp; v.p.spY='na'; v.why.spY = 'No share price history or APY available'; }
+    }
+    v.reach = v.liq!=null && v.idle!=null ? Math.max(0, v.liq - v.idle) : null;
+    v.p.reach = v.p.liq==='obs' && v.p.idle==='obs' ? 'obs' : (v.liq!=null ? 'est' : 'na'); v.why.reach = 'Standard liquidity minus idle';
+  });
+}
+function snapshotData(){
+  return {t:SNAP_DATE, partial:[], out: VAULTS.map(v=>{
+    const s = v.snap, o = {p:{}, why:{}};
+    const ob = 'Trading Strategy vault page, observed Oct 5, 2026';
+    o.tvl = s.tvl; o.p.tvl='obs'; o.why.tvl = ob;
+    o.apyEx = null; o.p.apyEx='na'; o.why.apyEx = 'Not available in snapshot';
+    o.apy30 = s.apy; o.p.apy30='obs'; o.why.apy30 = '30d annualized net return, ' + ob + '; reward treatment not stated';
+    o.apyTot = null; o.p.apyTot='na'; o.why.apyTot = 'Not available in snapshot';
+    o.px = 1; o.p.px='est'; o.why.px='Assumed $1.00 stablecoin peg';
+    o.liq = s.tvl*s.liqPct; o.p.liq='est'; o.why.liq = `Assumed ${pct(s.liqPct,0)} of total assets`;
+    o.idle = s.tvl*s.idlePct; o.p.idle='est'; o.why.idle = `Assumed ${pct(s.idlePct,0)} of total assets`;
+    o.force = null; o.p.force='na'; o.why.force='Not available in snapshot';
+    o.sp = s.sp; o.p.sp='est'; o.why.sp='Placeholder share price';
+    o.spY = null; o.p.alloc='est'; o.why.alloc='Placeholder split';
+    o.mkts = s.mkts.map((w,i)=>({id:'est'+i, label:`Market ${i+1}`, alloc:(o.tvl - o.idle)*w, mliq:null, util:null, kind:'market'}));
+    return o;
+  })};
+}
+
+/* ================= prices ================= */
+function price(asset){
+  if(asset==='USDC') return {v:1, p:'est', why:'Assumed $1.00 peg (no USDC price in this data set)'};
+  const v = VAULTS.find(x=>x.asset===asset && x.p.px==='obs') || VAULTS.find(x=>x.asset===asset);
+  return {v:v.px, p:v.p.px, why:v.why.px};
+}
+const C = (text, why) => `<span class="calc" title="Simulated calculation on observed vault data: ${esc(why)}">${text}</span>`;
+const pxHTML = asset => { const q = price(asset); return q.p==='est' ? `<span class="est" title="Estimated: ${esc(q.why)}">${q.v.toFixed(4)}<sup>est</sup></span>` : `<span title="Observed: ${esc(q.why)}">${q.v.toFixed(4)}</span>`; };
+
+/* ================= simulated client book ================= */
+const TARGET_USD = {PYUSD:18e6, RLUSD:12e6, PRIME:8e6};
+const freshState = () => ({
+  chain: {shares:{}, wallet:{PYUSD:2.5e6, RLUSD:4.2e6, USDC:4.0e6}},
+  ledger:{shares:{}, wallet:{PYUSD:2.5e6, RLUSD:0.2e6, USDC:4.0e6}, price:{}},
+  allowance: {PYUSD:{PYUSD:1e12, PRIME:1e12}, RLUSD:{RLUSD:0}},
+  gasEth: 0.42, nonce: 44,                 // one client sending address; next unused nonce
+  simLiq: {PYUSD:0, RLUSD:0, PRIME:0},     // simulated session changes to vault liquidity, in tokens
+  tx: [], ex: {}, persist: [], selTx: null, seq: 1, txSeq: 207, lastMsg: '', notice: ''
+});
+let S = freshState();
+function nextDow(dow, minDays){ const d = at(17,0); let k = 0; do { d.setTime(d.getTime()+86400000); k++; } while(new Date(d).toLocaleDateString('en-US',{timeZone:TZ, weekday:'short'}) !== dow || k < (minDays||1)); return d; }
+function monthEnd(){ const d = new Date(NOW.toLocaleString('en-US',{timeZone:TZ})); const e = new Date(d.getFullYear(), d.getMonth()+1, 0, 17, 0); return new Date(e.getTime() + ET_OFFSET); }
+function needs(){
+  const fri = nextDow('Fri'); const tue = nextDow('Tue', Math.round((fri-NOW)/86400000)+1);
+  return [
+    {date:fri, label:'Payroll funding', asset:'PYUSD', amount:5.0e6},
+    {date:tue, label:'Vendor settlement', asset:'RLUSD', amount:3.0e6},
+    {date:monthEnd() > tue ? monthEnd() : nextDow('Fri', 14), label:'Client redemption notice', asset:'PYUSD', amount:10.0e6}
+  ].sort((a,b)=>a.date-b.date);
+}
+function seed(){
+  VAULTS.forEach(v=>{ const sh = Math.round(TARGET_USD[v.key] / (v.sp * v.px)); S.chain.shares[v.key] = sh; S.ledger.shares[v.key] = sh; S.ledger.price[v.key] = v.sp; });
+  S.ledger.price.PYUSD = V.PYUSD.spY;                       // price break: record marked at prior-day share price
+  const w202 = Math.round(3.0e6 / V.RLUSD.sp);
+  S.chain.shares.RLUSD -= w202;                              // quantity break: TX-202 confirmed, not booked
+  const H = (...a) => a;
+  S.tx = [
+    {id:'TX-201', type:'Deposit', vault:'PYUSD', asset:'PYUSD', amount:2.0e6, stage:'Reconciled', signer:'Client signer (Fireblocks)', shares:Math.round(2e6/V.PYUSD.sp), applied:true, hash:hex(64), nonce:39, fee:2.0, conf:'Confirmed (64+ blocks)', confirmedAt:at(14,31,-1),
+     hist:[H('Requested by client',at(14,5,-1)),H('Prepared by Sentora ops',at(14,12,-1)),H('Signed by client (Fireblocks)',at(14,22,-1)),H('Broadcast',at(14,30,-1)),H('Confirmed',at(14,31,-1)),H('Reconciled',at(16,0,-1))]},
+    {id:'TX-202', type:'Withdraw', vault:'RLUSD', asset:'RLUSD', amount:3.0e6, stage:'Confirmed', signer:'Client signer (Fireblocks)', shares:w202, applied:true, hash:hex(64), nonce:40, fee:2.0, conf:'Confirmed (64+ blocks)', confirmedAt:ago(188),
+     hist:[H('Requested by client',ago(240)),H('Prepared by Sentora ops',ago(228)),H('Signed by client (Fireblocks): nonce 40, priority fee 2.0 gwei',ago(210)),H('Broadcast',ago(190)),H('Confirmed',ago(188))]},
+    {id:'TX-203', type:'Deposit', vault:'PRIME', asset:'PYUSD', amount:1.5e6, stage:'Broadcast', flag:'Delayed', signer:'Client signer (Fireblocks)', hash:hex(64), nonce:42, fee:0.8, conf:'Pending in mempool',
+     hist:[H('Requested by client',ago(170)),H('Prepared by Sentora ops',ago(160)),H('Signed by client (Fireblocks): nonce 42, priority fee 0.8 gwei',ago(140)),H('Broadcast',ago(95))], note:'Pending in mempool for over 90 minutes. Priority fee below what current blocks are including.'},
+    {id:'TX-204', type:'Withdraw', vault:'PYUSD', asset:'PYUSD', amount:6.0e6, stage:'Signed', signer:'Client signer (Fireblocks)', nonce:43, fee:2.0,
+     hist:[H('Requested by client',ago(75)),H('Prepared by Sentora ops',ago(62)),H('Signed by client (Fireblocks): nonce 43, priority fee 2.0 gwei',ago(40))], note:'Funds Friday payroll.'},
+    {id:'TX-205', type:'Deposit', vault:'RLUSD', asset:'RLUSD', amount:1.0e6, stage:'Failed', failReason:'allowance', signer:'Client signer (Fireblocks)', ledgerBooked:true, hash:hex(64), nonce:41, fee:2.0, conf:'Reverted (nonce consumed)',
+     hist:[H('Requested by client',ago(300)),H('Prepared by Sentora ops',ago(290)),H('Signed by client (Fireblocks): nonce 41, priority fee 2.0 gwei',ago(275)),H('Broadcast',ago(268)),H('Reverted: insufficient allowance',ago(268),'bad')], note:'Token allowance to the vault was below the deposit amount. Sentora\'s position record had already booked the deposit at request time.'},
+    {id:'TX-206', type:'Withdraw', vault:'PRIME', asset:'PYUSD', amount:2.0e6, stage:'Prepared',
+     hist:[H('Requested by client',ago(20)),H('Prepared by Sentora ops',ago(12))]}
+  ];
+  S.tx.forEach(t=>{ t.requester='Client treasury'; t.preparer='Sentora ops'; });
+}
+
+/* ================= balances, reservations, liquidity ================= */
+const OPEN = ['Prepared','Signed','Broadcast'];
+const posTok = k => S.chain.shares[k] * V[k].sp;
+const posUSD = k => posTok(k) * V[k].px;
+const walletUSD = a => S.chain.wallet[a] * price(a).v;
+function reservedPos(k, ex){ return S.tx.filter(t=>t.id!==ex && t.type==='Withdraw' && t.vault===k && OPEN.includes(t.stage)).reduce((a,t)=>a+t.amount,0); }
+function reservedCash(a, ex){ return S.tx.filter(t=>t.id!==ex && t.type==='Deposit' && t.asset===a && OPEN.includes(t.stage)).reduce((s,t)=>s+t.amount,0); }
+const availPos = (k, ex) => posTok(k) - reservedPos(k, ex);
+const availCash = (a, ex) => S.chain.wallet[a] - reservedCash(a, ex);
+// Vault liquidity in tokens: observed baseline + simulated session changes - signed/broadcast withdrawals not yet executed.
+const stdLiqTok = v => v.liq==null ? 0 : v.liq / v.px + S.simLiq[v.key];
+function reservedLiq(k, ex){ return S.tx.filter(t=>t.id!==ex && t.type==='Withdraw' && t.vault===k && ['Signed','Broadcast'].includes(t.stage)).reduce((a,t)=>a+t.amount,0); }
+const availLiq = (v, ex, ahead=0) => Math.max(0, stdLiqTok(v) - reservedLiq(v.key, ex) - ahead);
+const clientNowTok = v => Math.max(0, Math.min(availPos(v.key), availLiq(v)));
+function holdings(){
+  const rows = [];
+  VAULTS.forEach(v=>rows.push({k:v.key, v, label:v.name, qty:S.chain.shares[v.key], qtyLabel:N(S.chain.shares[v.key])+' sh', sp:v.sp, under:posTok(v.key), asset:v.asset, usd:posUSD(v.key), vaultShare:posUSD(v.key)/v.tvl}));
+  Object.keys(S.chain.wallet).forEach(a=>rows.push({k:'W-'+a, label:a+' (custody wallet)', qty:S.chain.wallet[a], qtyLabel:tok(S.chain.wallet[a],a), sp:null, under:S.chain.wallet[a], asset:a, usd:walletUSD(a), vaultShare:null}));
+  return rows;
+}
+const totalUSD = () => holdings().reduce((a,r)=>a+r.usd,0);
+function heldAllDay(k){
+  // Shares held for the full 24 hours: current shares adjusted back for flows confirmed inside the window.
+  const cut = Date.now() - 86400000; let start = S.chain.shares[k];
+  S.tx.filter(t=>t.vault===k && t.applied && t.confirmedAt && t.confirmedAt.getTime() > cut).forEach(t=>{ start += t.type==='Deposit' ? -t.shares : t.shares; });
+  return Math.max(0, Math.min(start, S.chain.shares[k]));
+}
+function accrual(){
+  return VAULTS.map(v=>{
+    const held = heldAllDay(v.key);
+    const review = v.p.spY==='obs' && Math.abs(v.sp/v.spY - 1) > .01;   // large moves are investigated, not reported as income
+    const share = review ? 0 : held*(v.sp - v.spY)*v.px;
+    const inc = (v.apyTot!=null && v.apyEx!=null) ? held*v.sp*v.px*(Math.pow(1+v.apyTot,1/365) - Math.pow(1+v.apyEx,1/365)) : null;
+    return {v, held, share, review, measured: v.p.spY==='obs', basis: v.p.spY==='obs' ? 'measured' : v.apyEx!=null ? 'apyEx' : v.apy30!=null ? 'apy30' : 'none', inc};
+  });
+}
+function controlCheck(t, phase){
+  const f = [];
+  if(!(t.amount > 0) || !isFinite(t.amount)) f.push('Amount must be greater than zero');
+  if(t.type==='Withdraw'){ const a = availPos(t.vault, t.id); if(t.amount > a + 1) f.push(`Exceeds unreserved position ${tok(Math.max(0,a), t.asset)}`); }
+  else { const a = availCash(t.asset, t.id); if(t.amount > a + 1) f.push(`Exceeds unreserved wallet balance ${tok(Math.max(0,a), t.asset)}`); }
+  if(t.signer && (t.signer===t.requester || t.signer===t.preparer)) f.push('Signer must differ from requester and preparer');
+  if(phase==='broadcast' || phase==='execute'){
+    if(phase==='broadcast' && S.gasEth < 0.01) f.push(`Gas policy: ${S.gasEth.toFixed(3)} ETH below the 0.010 ETH minimum`);
+    if(t.type==='Deposit' && (S.allowance[t.asset][t.vault]||0) < t.amount) f.push(`Allowance ${tok(S.allowance[t.asset][t.vault]||0,t.asset)} below deposit amount`);
+  }
+  return f;
+}
+function liqCheck(t){ if(t.type!=='Withdraw') return null; const v = V[t.vault]; const a = availLiq(v, t.id); return t.amount > a + 1 ? a : null; }
+
+/* ================= transaction workflow ================= */
+const STAGES = ['Prepared','Signed','Broadcast','Confirmed','Reconciled'];
+function stageDots(t){
+  const term = ['Failed','Rejected'].includes(t.stage);
+  const idx = t.stage==='Failed' ? 2 : t.stage==='Rejected' ? 0 : STAGES.indexOf(t.stage);
+  return '<div class="stages">' + STAGES.map((s,i)=>{
+    const c = i < idx ? 'done' : i===idx ? (term ? 'fail' : (t.flag==='Delayed'||t.sub) ? 'delay' : (t.stage==='Reconciled'?'done':'cur')) : '';
+    return (i ? `<i class="${i<=idx && !term ? 'done' : (i<idx?'done':'')}"></i>` : '') + `<span class="${c}" title="${s}"></span>`;
+  }).join('') + '</div>';
+}
+function txStatus(t){
+  if(t.stage==='Failed') return pill('crit', t.sub ? 'Failed: fixing allowance' : 'Failed');
+  if(t.stage==='Rejected') return t.sub && t.sub.kind==='nonceCancel' ? pill('warn','Cancelled: nonce cancellation pending') : pill('neutral', t.cancelled ? 'Cancelled' : 'Declined');
+  if(t.flag==='Blocked') return pill('crit','Blocked: liquidity');
+  if(t.sub && t.sub.kind==='replace') return pill('warn','Replacement in progress');
+  if(t.flag==='Delayed') return pill('warn','Delayed');
+  return pill(t.stage==='Reconciled'?'good':'info', {Prepared:'Awaiting client signature', Signed:'Signed, ready to broadcast', Broadcast:'Broadcast, pending', Confirmed:'Awaiting reconciliation', Reconciled:'Reconciled'}[t.stage]);
+}
+function nextActions(t){
+  if(t.sub && t.sub.kind==='nonceCancel') return {prepared:[['nc_sign','Client signs nonce cancellation']], signed:[['nc_broadcast','Broadcast cancellation']], broadcast:[['nc_confirm','Confirm cancellation on-chain']]}[t.sub.step];
+  if(t.flag==='Blocked') return liqCheck(t)!=null && availLiq(V[t.vault], t.id) >= 1e5 ? [['amend','Amend to available, re-sign'],['cancel','Cancel request']] : (liqCheck(t)==null ? [['broadcast','Broadcast']] : [['cancel','Cancel request']]);
+  if(t.stage==='Prepared') return [['sign','Client signs (Fireblocks)'],['decline','Client declines']];
+  if(t.stage==='Signed') return [['broadcast','Broadcast']];
+  if(t.stage==='Broadcast'){
+    if(t.sub && t.sub.kind==='replace') return {prepared:[['rep_sign','Client signs replacement']], signed:[['rep_broadcast','Broadcast replacement']]}[t.sub.step];
+    if(t.flag==='Delayed') return [['rep_prepare','Prepare replacement (same nonce, higher fee)']];
+    return [['confirm','Confirm on-chain']];
+  }
+  if(t.stage==='Confirmed') return [['reconcile','Reconcile to position record']];
+  if(t.stage==='Failed'){
+    if(t.ledgerBooked) return [['reverse','Reverse premature booking']];
+    if(t.failReason==='allowance'){
+      if(!t.sub) return [['ap_prepare','Prepare token approval']];
+      return {prepared:[['ap_sign','Client signs approval']], signed:[['ap_broadcast','Broadcast approval']], broadcast:[['ap_confirm','Approval confirmed']]}[t.sub.step];
+    }
+    return [['reprepare','Re-prepare for signature']];
+  }
+  return [];
+}
+// Lowest outstanding nonce on the single client sending address blocks every higher one, signed or broadcast,
+// including token approvals. Confirmed, reverted, released or voided nonces are no longer outstanding.
+function lowerOutstanding(n, selfId){
+  const out = [];
+  S.tx.forEach(x=>{
+    if(x.id!==selfId && x.nonce!=null && !x.nonceVoid && ['Prepared','Signed','Broadcast'].includes(x.stage) && x.nonce < n) out.push({nonce:x.nonce, id:x.id, what:x.stage==='Broadcast'?'broadcast, unconfirmed':'not yet broadcast'});
+    if(x.id!==selfId && x.sub && x.sub.kind==='nonceCancel' && x.sub.nonce < n) out.push({nonce:x.sub.nonce, id:x.id+' nonce cancellation', what:x.sub.step==='broadcast'?'broadcast, unconfirmed':x.sub.step==='signed'?'signed, not yet broadcast':'awaiting client signature'});
+    if(x.sub && x.sub.kind==='approval' && x.sub.nonce!=null && ['signed','broadcast'].includes(x.sub.step) && x.sub.nonce < n && !(x.id===selfId && n===x.sub.nonce)) out.push({nonce:x.sub.nonce, id:x.id+' approval', what:x.sub.step==='broadcast'?'broadcast, unconfirmed':'not yet broadcast'});
+  });
+  return out.sort((a,b)=>a.nonce-b.nonce)[0] || null;
+}
+function txAct(id, act){
+  const t = S.tx.find(x=>x.id===id); if(!t) return;
+  const now = new Date(); S.lastMsg = '';
+  const allowed = (nextActions(t)||[]).map(a=>a[0]);
+  if(!allowed.includes(act)){ S.lastMsg = `Action not allowed at this step.`; render(); return; }
+  const H = (s,c) => t.hist.push(c?[s,now,c]:[s,now]);
+  switch(act){
+    case 'sign': {
+      const f = controlCheck({...t, signer:'Client signer (Fireblocks)'}, 'sign');
+      if(f.length){ t.stage='Rejected'; t.reject = f.join('. '); H('Rejected by controls at signing','bad'); break; }
+      if(t.nonce==null){ t.nonce = S.nonce++; } t.fee = 2.0;
+      t.signer='Client signer (Fireblocks)'; t.stage='Signed'; H(`Signed by client (Fireblocks): nonce ${t.nonce}, priority fee ${t.fee} gwei`); break; }
+    case 'decline': t.stage='Rejected'; t.reject='Declined by client signer'; H('Declined by client signer','bad'); break;
+    case 'cancel': t.stage='Rejected'; t.cancelled=true; t.flag=null; t.reject='Cancelled: exceeds available vault liquidity'; H('Cancelled by Sentora ops after client call','bad');
+      if(t.nonce!=null && !t.hash){ if(t.nonce===S.nonce-1){ S.nonce--; H(`Nonce ${t.nonce} released (never broadcast)`); } else { t.sub = {kind:'nonceCancel', step:'prepared', nonce:t.nonce}; H(`Nonce ${t.nonce} still outstanding: zero-value self-transfer prepared to cancel it (needs client signature)`); } }
+      dispose(t.id, 'Request cancelled; no liquidity needed'); break;
+    case 'broadcast': {
+      const f = controlCheck(t, 'broadcast');
+      if(f.length){ S.lastMsg = 'Blocked before broadcast: ' + f.join('. '); break; }
+      const short = liqCheck(t);
+      if(short!=null){ if(t.flag!=='Blocked'){ t.flag='Blocked'; H('Pre-broadcast check: exceeds available vault liquidity','bad'); escalate(V[t.vault], t.amount, 0, t.id); } break; }
+      t.flag=null; t.stage='Broadcast'; t.hash = hex(64); t.conf='Pending'; S.gasEth -= 0.004; H(`Broadcast (nonce ${t.nonce})`); break; }
+    case 'amend': {
+      const avail = Math.floor(availLiq(V[t.vault], t.id)/1e5)*1e5; const rest = t.amount - avail;
+      t.amount = avail; t.flag=null; t.stage='Prepared'; t.signer=null; H(`Amended to ${tok(avail,t.asset)}; returned for client signature (nonce ${t.nonce} kept for the re-signed transaction)`);
+      dispose(t.id, `Request amended to ${tok(avail,t.asset)}; remainder ${tok(rest,t.asset)} staged as TX-${S.txSeq}`);
+      S.tx.push({id:'TX-'+(S.txSeq++), type:'Withdraw', vault:t.vault, asset:t.asset, amount:Math.ceil(rest/1e5)*1e5, stage:'Prepared', requester:t.requester, preparer:'Sentora ops',
+        hist:[['Staged remainder of '+t.id, now],['Prepared by Sentora ops', now]], note:'Remainder of '+t.id+'. Sign and broadcast when liquidity allows.'});
+      break; }
+    case 'rep_prepare': t.sub={kind:'replace', step:'prepared'}; H(`Replacement prepared: nonce ${t.nonce}, priority fee ${t.fee} → 3.5 gwei`); break;
+    case 'rep_sign': t.sub.step='signed'; H('Client signed replacement (Fireblocks)'); break;
+    case 'rep_broadcast': if(S.gasEth < 0.01){ S.lastMsg=`Blocked by gas policy: ${S.gasEth.toFixed(3)} ETH is below the 0.010 ETH minimum. Top up the sending address first.`; break; } t.sub=null; t.flag=null; t.fee=3.5; t.hash=hex(64); t.conf='Pending'; S.gasEth -= 0.004; H(`Replacement broadcast (nonce ${t.nonce}); original dropped`); break;
+    case 'confirm': {
+      const ahead = t.nonce!=null ? lowerOutstanding(t.nonce, t.id) : null;
+      if(ahead){ S.lastMsg = `Queued behind nonce ${ahead.nonce} (${ahead.id}, ${ahead.what}). Lower nonces from this address must be mined first.`; break; }
+      const f = controlCheck(t, 'execute'); const short = liqCheck(t);
+      if(f.length || short!=null){ t.stage='Failed'; t.failReason = short!=null ? 'liquidity' : (f.some(x=>/Allowance/.test(x)) ? 'allowance' : 'balance'); t.conf='Reverted on-chain (nonce consumed)'; H('Reverted on-chain: ' + (short!=null ? 'vault liquidity below amount' : f.join('; ')),'bad'); break; }
+      applyChain(t); t.stage='Confirmed'; t.conf='Confirmed (12 blocks)'; H('Confirmed');
+      if(t.type==='Withdraw') dispose(t.id, 'Withdrawal completed on-chain'); break; }
+    case 'reconcile': applyLedger(t); t.stage='Reconciled'; H('Reconciled to position record'); break;
+    case 'reverse': S.ledger.wallet[t.asset] += t.amount; t.ledgerBooked=false; H('Premature booking reversed in position record'); break;
+    case 'nc_sign': t.sub.step='signed'; H(`Client signed zero-value self-transfer (Fireblocks): nonce ${t.sub.nonce}`); break;
+    case 'nc_broadcast': if(S.gasEth < 0.01){ S.lastMsg=`Blocked by gas policy: ${S.gasEth.toFixed(3)} ETH is below the 0.010 ETH minimum. Top up the sending address first.`; break; }
+      t.sub.step='broadcast'; t.sub.hash=hex(64); S.gasEth -= 0.001; H(`Cancellation broadcast (nonce ${t.sub.nonce})`); break;
+    case 'nc_confirm': { const ahead = lowerOutstanding(t.sub.nonce, t.id);
+      if(ahead){ S.lastMsg = `Cancellation (nonce ${t.sub.nonce}) queued behind nonce ${ahead.nonce} (${ahead.id}, ${ahead.what}).`; break; }
+      t.nonceVoid = true; t.sub = null; H(`Cancellation confirmed: nonce ${t.nonce} consumed by zero-value self-transfer`); break; }
+    case 'ap_prepare': t.sub={kind:'approval', step:'prepared'}; H(`Token approval prepared: ${t.asset} allowance to ${V[t.vault].name}`); break;
+    case 'ap_sign': t.sub.step='signed'; t.sub.nonce = S.nonce++; H(`Client signed token approval (Fireblocks): nonce ${t.sub.nonce}`); break;
+    case 'ap_broadcast': if(S.gasEth < 0.01){ S.lastMsg=`Blocked by gas policy: ${S.gasEth.toFixed(3)} ETH is below the 0.010 ETH minimum. Top up the sending address first.`; break; }
+      t.sub.step='broadcast'; t.apHash=hex(64); S.gasEth -= 0.002; H(`Approval broadcast (nonce ${t.sub.nonce})`); break;
+    case 'ap_confirm': {
+      const ahead = lowerOutstanding(t.sub.nonce, null);
+      if(ahead){ S.lastMsg = `Approval (nonce ${t.sub.nonce}) queued behind nonce ${ahead.nonce} (${ahead.id}, ${ahead.what}). Lower nonces from this address must be mined first.`; break; }
+      S.allowance[t.asset][t.vault] = t.amount; t.sub=null; t.failReason=null; t.stage='Prepared'; t.signer=null; t.hash=null; t.conf=null; t.nonce=null; H('Approval confirmed; deposit re-prepared for client signature (new nonce at signing)'); break; }
+    case 'reprepare': t.stage='Prepared'; t.signer=null; t.failReason=null; t.hash=null; t.conf=null; t.nonce=null; H('Re-prepared; awaiting client signature (new nonce at signing)'); break;
+  }
+  render();
+}
+function applyChain(t){
+  if(t.applied) return;
+  const v = V[t.vault]; const sh = Math.round(t.amount / v.sp);
+  if(t.type==='Deposit'){ S.chain.wallet[t.asset] -= t.amount; S.chain.shares[t.vault] += sh; S.simLiq[t.vault] += t.amount; S.allowance[t.asset][t.vault] -= t.amount; }
+  else { S.chain.wallet[t.asset] += t.amount; S.chain.shares[t.vault] -= sh; S.simLiq[t.vault] -= t.amount; }
+  t.shares = sh; t.applied = true; t.confirmedAt = new Date();
+}
+function applyLedger(t){
+  if(!t.applied) return;
+  if(t.type==='Deposit'){ if(!t.ledgerBooked) S.ledger.wallet[t.asset] -= t.amount; S.ledger.shares[t.vault] += t.shares; }
+  else { S.ledger.wallet[t.asset] += t.amount; S.ledger.shares[t.vault] -= t.shares; }
+  t.ledgerBooked = false;
+}
+
+/* ================= reconciliation ================= */
+function recon(){
+  const out = [];
+  VAULTS.forEach(v=>{
+    const lq = S.ledger.shares[v.key], cq = S.chain.shares[v.key], lp = S.ledger.price[v.key];
+    const qd = (cq - lq)*v.sp*v.px, pd = lq*(v.sp - lp)*v.px, diff = qd + pd;
+    const ops = [], roots = [];
+    const qty = Math.abs(cq-lq)*v.sp*v.px > 1000, prc = Math.abs(lp - v.sp)*lq*v.px > 1000;
+    if(qty){ S.tx.filter(t=>t.vault===v.key && t.stage==='Confirmed').forEach(t=>{ ops.push({op:'book', tx:t.id, text:`Book ${t.id} to position record`}); roots.push({id:t.id, usd:t.amount*v.px}); }); if(!ops.length) ops.push({op:'investigate', text:'Unexplained: investigate'}); }
+    if(prc){ ops.push({op:'remark', k:v.key, text:'Re-mark at live share price and book accrual'}); roots.push({id:'price-'+v.key, usd:Math.abs(lp - v.sp)*lq*v.px}); }
+    out.push({k:v.key, label:v.name, unit:'sh', lq, cq, lp, sp:v.sp, qd, pd, diff, type: qty&&prc?'Quantity + price': qty?'Quantity': prc?'Price':'Matched', ops, roots});
+  });
+  Object.keys(S.chain.wallet).forEach(a=>{
+    const lq = S.ledger.wallet[a], cq = S.chain.wallet[a], px = price(a).v; const diff = (cq - lq)*px;
+    const ops = [], roots = [];
+    if(Math.abs(diff) > 1000){
+      S.tx.filter(t=>t.asset===a && t.stage==='Confirmed').forEach(t=>{ ops.push({op:'book', tx:t.id, text:`Book ${t.id} ${t.type.toLowerCase()} (${tok(t.amount,a)})`}); roots.push({id:t.id, usd:t.amount*px}); });
+      S.tx.filter(t=>t.asset===a && t.ledgerBooked).forEach(t=>{ ops.push({op:'reverse', tx:t.id, text:`Reverse premature booking of ${t.id} (${tok(t.amount,a)})`}); roots.push({id:t.id, usd:t.amount*px}); });
+      if(!ops.length) ops.push({op:'investigate', text:'Unexplained: investigate'});
+    }
+    out.push({k:'W-'+a, label:a+' (custody wallet)', unit:a, lq, cq, lp:null, sp:null, qd:diff, pd:0, diff, type: Math.abs(diff)>1000?'Quantity':'Matched', ops, roots});
+  });
+  return out;
+}
+
+/* ================= exceptions ================= */
+const OWN = {recon:'Sentora ops (reconciliation)', tx:'Sentora ops', liq:'Sentora ops + client coverage', mkt:'Sentora risk'};
+function conditions(){
+  const L = [];
+  recon().filter(r=>r.type!=='Matched').forEach(r=>L.push({id:'REC-'+r.k, kind:'recon', sev:r.type==='Price'?'warn':'crit', title:`${r.type} break: ${r.label}`, amount:Math.abs(r.qd)+Math.abs(r.pd),
+    evidence: (r.unit==='sh' ? `Record ${N(r.lq)} sh @ ${r.lp.toFixed(6)} vs chain ${N(r.cq)} sh @ ${r.sp.toFixed(6)}` : `Record ${tok(r.lq,r.unit)} vs chain ${tok(r.cq,r.unit)}`) + `. Quantity ${susd(r.qd)}, price ${susd(r.pd)}, net ${susd(r.diff)}${Math.abs(r.qd)>1 && Math.abs(r.pd)>1 ? ' (amount shown is gross)' : ''}`,
+    owner:OWN.recon, action:r.ops.map(o=>o.text).join('; '), ops:r.ops, roots:r.roots}));
+  VAULTS.forEach(v=>{ if(v.p.spY==='obs' && Math.abs(v.sp/v.spY - 1) > .01){ const amt = Math.abs(heldAllDay(v.key)*(v.sp - v.spY)*v.px);
+    L.push({id:'DATA-'+v.key, kind:'data', sev:'crit', title:`Share price moved ${pct(v.sp/v.spY-1,2)} in 24h: ${v.name}`, amount:amt, evidence:`Observed ${v.spY.toFixed(6)} → ${v.sp.toFixed(6)}. Moves over 1% are not reported as income until verified.`, owner:OWN.mkt, action:'Verify against on-chain data and the curator before reporting accrual to the client', roots:[{id:'DATA-'+v.key, usd:amt}]}); } });
+  S.tx.forEach(t=>{
+    const u = t.amount*price(t.asset).v;
+    if(t.flag==='Delayed' && t.stage==='Broadcast') L.push({id:'TXD-'+t.id, kind:'tx', sev:'warn', title:`${t.id} delayed in mempool`, amount:u, evidence:t.note, owner:OWN.tx, action:'Prepare a replacement with the same nonce and a higher fee; client re-signs', ref:t.id, roots:[{id:t.id, usd:u}]});
+    if(t.stage==='Failed') L.push({id:'TXF-'+t.id, kind:'tx', sev:'crit', title:`${t.id} failed on-chain`, amount:u, evidence:(t.note||'')+' '+(t.hist.filter(h=>h[2]==='bad').slice(-1)[0]||[''])[0], owner: t.failReason==='allowance' ? 'Sentora ops; client signs approval' : OWN.tx,
+      action: [t.ledgerBooked?'reverse premature booking':null, t.failReason==='allowance'?'client signs token approval; confirm it; re-prepare deposit for signature':'re-prepare for signature once the cause is cleared'].filter(Boolean).join('; ').replace(/^./, c=>c.toUpperCase()), ref:t.id, roots:[{id:t.id, usd:u}]});
+    if(t.flag==='Blocked') L.push({id:'TXB-'+t.id, kind:'tx', sev:'crit', title:`${t.id} blocked before broadcast`, amount:u, evidence:`Withdrawal ${tok(t.amount,t.asset)} vs available vault liquidity ${tok(availLiq(V[t.vault],t.id),t.asset)}`, owner:OWN.liq, action:'Call the client: amend to available and re-sign, or cancel', ref:t.id, roots:[{id:t.id, usd:u}]});
+    if(t.stage==='Rejected') L.push({id:'TXR-'+t.id, kind:'tx', sev:'warn', title:`${t.id} ${t.cancelled?'cancelled':'declined or rejected'}`, amount:u, evidence:t.reject, owner:OWN.tx, action:'Confirm disposition with the client and close', ref:t.id, ackOnly:true, roots:[{id:t.id, usd:u}]});
+  });
+  return L;
+}
+function detectMarkets(){
+  VAULTS.forEach(v=>{ const share = posUSD(v.key)/v.tvl; v.mkts.forEach(m=>{
+    if(m.util==null || m.util < .95) return;
+    const id = 'MKT-'+v.key+'-'+String(m.id).slice(2,10);
+    const rec = S.persist.find(e=>e.id===id);
+    const amount = m.alloc*share;
+    const base = {id, kind:'mkt', sev:'warn', title:`High utilization: ${m.label} in ${v.name}`, amount, evidence:`Utilization ${pct(m.util)} observed ${hhmm(m.obsAt||new Date())}. Vault allocation ${usd1(m.alloc)}; client look-through ${usd(amount)}.`, owner:OWN.mkt, action:'Monitor; brief the client if it persists into planned withdrawals', ref:v.key, mid:m.id, roots:[{id, usd:amount}]};
+    if(!rec){ S.persist.push(base); S.ex[id] = {status:'Open'}; }
+    else { Object.assign(rec, base); if(S.ex[id].status==='Resolved'){ S.ex[id] = {status:'Open', note:'Re-detected on refresh'}; } }
+  }); });
+}
+function buildExceptions(){
+  const active = conditions(); const ids = new Set(active.map(e=>e.id)); const now = new Date();
+  active.forEach(e=>{
+    const st = S.ex[e.id];
+    if(!st) S.ex[e.id] = {status:'Open'};
+    else if(st.status==='Resolved' && !e.ackOnly) S.ex[e.id] = {status:'Open', note:'Condition reappeared'};
+    S.ex[e.id].record = e;
+  });
+  // Local, deterministic conditions (breaks, transaction states) close when they no longer exist.
+  Object.entries(S.ex).forEach(([id,st])=>{
+    if(st.record && !ids.has(id) && st.status!=='Resolved' && ['recon','tx','data'].includes(st.record.kind))
+      S.ex[id] = {...st, status:'Resolved', resolution:`Verified ${hhmm(now)}: ${st.record.kind==='recon'?'record and chain now match within $1,000':'transaction no longer in this state'}`};
+  });
+  const list = [];
+  Object.entries(S.ex).forEach(([id,st])=>{ if(st.record && !S.persist.find(p=>p.id===id)) list.push({...st.record, status:st.status, note:st.note, resolution:st.resolution}); });
+  S.persist.forEach(e=>{ const st = S.ex[e.id]||{status:'Open'}; list.push({...e, status:st.status, note:st.note, resolution:st.resolution}); });
+  const sev = {crit:0, warn:1};
+  return list.sort((a,b)=>(a.status==='Resolved')-(b.status==='Resolved') || sev[a.sev]-sev[b.sev] || b.amount-a.amount);
+}
+const openEx = () => buildExceptions().filter(e=>e.status!=='Resolved');
+function uniqueExposure(list){ const m = {}; list.forEach(e=>(e.roots||[]).forEach(r=>{ m[r.id] = Math.max(m[r.id]||0, r.usd); })); return Object.values(m).reduce((a,b)=>a+b,0); }
+function dispose(txId, text){
+  S.persist.filter(e=>e.kind==='liq' && e.txId===txId && (!S.ex[e.id] || S.ex[e.id].status!=='Resolved')).forEach(e=>{
+    S.ex[e.id] = {...(S.ex[e.id]||{}), status:'Resolved', resolution:`Disposition ${hhmm(new Date())}: ${text}. Original evidence retained.`};
+  });
+}
+function escalate(v, amountTok, aheadTok, txId){
+  const avail = availLiq(v, txId, aheadTok); const short = amountTok - avail;
+  const force = v.force!=null ? v.force / v.px : null;
+  const route2 = force==null ? 'Force-deallocatable liquidity not observed' : (short <= force ? `Force-deallocation could cover the gap (observed ${tok(force,v.asset)}; requires an additional deallocation step, potentially bundled with the withdrawal; a penalty may apply)` : `Force-deallocatable ${tok(force,v.asset)} would not cover the gap`);
+  const id = 'LIQ-' + (S.seq++);
+  const e = {id, kind:'liq', sev:'crit', title:`Withdrawal shortfall: ${v.name}`, amount:short*v.px,
+    evidence:`Requested ${tok(amountTok,v.asset)}${txId?' ('+txId+')':''}. Available via standard route ${tok(avail,v.asset)}${aheadTok?' after '+tok(aheadTok,v.asset)+' assumed ahead':''}. ${route2}.`,
+    owner:OWN.liq, action:`Tell the client before they submit: ${tok(avail,v.asset)} available now. Assess force-deallocation for the remaining ${tok(short,v.asset)}; coordinate with the curator team; re-check hourly`,
+    ref:v.key, amountReq:amountTok, ahead:aheadTok, txId, roots:[{id: txId || id, usd:short*v.px}]};
+  S.persist.push(e); S.ex[id] = {status:'Open'};
+  return e;
+}
+async function exAct(id, act){
+  const e = buildExceptions().find(x=>x.id===id); if(!e) return;
+  const now = new Date(); const set = p => { S.ex[id] = {...S.ex[id], ...p}; };
+  if(act==='ack') set({status:'Acknowledged', note:`Acknowledged by ${e.owner}, ${hhmm(now)}`});
+  if(act==='escalate') set({status:'Escalated', note:`Escalated to ${e.kind==='liq'?'curator team and client coverage lead':'head of operations'}, ${hhmm(now)}`});
+  if(act==='close') set({status:'Resolved', resolution:`Closed ${hhmm(now)}: disposition confirmed with client`});
+  if(act==='fix'){
+    if(e.kind==='recon') (e.ops||[]).forEach(o=>{
+      if(o.op==='book'){ const t = S.tx.find(x=>x.id===o.tx); if(t && t.stage==='Confirmed') txAct(t.id,'reconcile'); }
+      if(o.op==='reverse'){ const t = S.tx.find(x=>x.id===o.tx); if(t && t.ledgerBooked){ S.ledger.wallet[t.asset] += t.amount; t.ledgerBooked=false; t.hist.push(['Premature booking reversed in position record', now]); } }
+      if(o.op==='remark'){ S.ledger.price[o.k] = V[o.k].sp; }
+    });
+    if(S.ex[id] && S.ex[id].status==='Open') set({status:'Acknowledged'});
+    set({note:`Correction applied ${hhmm(now)}; closes when re-verified`});
+  }
+  if(act==='recheck'){
+    set({note:'Refreshing vault data...'}); render();
+    const r = await refresh();
+    if(!r.ok){ set({note:`Could not refresh ${hhmm(new Date())}: ${r.err}. Status unchanged.`}); render(); return; }
+    if(e.kind==='liq'){
+      const v = V[e.ref]; const a = availLiq(v, e.txId, e.ahead);
+      if(v.p.liq!=='obs') set({note:`Liquidity not observed on refresh ${hhmm(new Date())}; status unknown`});
+      else if(a >= e.amountReq) set({status:'Resolved', resolution:`Cleared ${hhmm(new Date())}: standard liquidity ${tok(a,v.asset)} now covers ${tok(e.amountReq,v.asset)}`});
+      else set({note:`Still short ${tok(e.amountReq - a, v.asset)} at ${hhmm(new Date())}`});
+    }
+    if(e.kind==='mkt'){
+      const m = V[e.ref].mkts.find(x=>x.id===e.mid);
+      if(!m || m.util==null) set({note:`Utilization unavailable on refresh ${hhmm(new Date())}; status unknown`});
+      else if(m.util < .95) set({status:'Resolved', resolution:`Cleared ${hhmm(new Date())}: utilization observed at ${pct(m.util)}`});
+      else set({note:`Utilization still ${pct(m.util)} at ${hhmm(new Date())}`});
+    }
+  }
+  render();
+}
+
+/* ================= funding forecast ================= */
+function forecast(){
+  const rows = []; const today = at(17,0);
+  const assets = [...new Set(needs().map(n=>n.asset))];
+  assets.forEach(a=>{
+    let cash = S.chain.wallet[a], pend = 0, drawn = 0;   // settled cash moves only with confirmed balances
+    let cap = VAULTS.filter(v=>v.asset===a).reduce((s,v)=>s + clientNowTok(v), 0);
+    const ev = [];
+    S.tx.filter(t=>t.asset===a && OPEN.includes(t.stage)).forEach(t=>{
+      if(t.type==='Withdraw'){
+        const live = ['Signed','Broadcast'].includes(t.stage) && !t.flag && liqCheck(t)==null;
+        ev.push({date:today, kind:'in', label:`${t.id} withdrawal, ${t.stage==='Prepared'?'awaiting signature':t.flag==='Blocked'?'blocked by liquidity':t.stage==='Signed'?'signed, awaiting broadcast':'broadcast, awaiting confirmation'}`, pendIn: live ? t.amount : 0, upside: live ? 0 : t.amount, out:0});
+      } else ev.push({date:today, kind:'out', label:`${t.id} deposit (${t.stage.toLowerCase()})`, pendIn:0, out:t.amount});
+    });
+    needs().filter(n=>n.asset===a).forEach(n=>ev.push({date:n.date, kind:'out', label:n.label, pendIn:0, out:n.amount}));
+    ev.sort((x,y)=>x.date-y.date || (x.kind==='in'?-1:1));
+    rows.push({date:null, label:'Opening settled cash', asset:a, pendIn:0, out:0, draw:0, cash, proj:cash, cap, status:''});
+    ev.forEach(e=>{
+      cash -= e.out; pend += e.pendIn; let draw = 0, status;
+      if(e.kind==='in') status = e.pendIn ? pill('info','Expected, not settled') : pill('neutral','Not counted') + ` <span class="note">${tok(e.upside,a)} only if signed and settled</span>`;
+      else if(cash >= -1) status = pill('good','Covered by settled cash');
+      else if(cash + pend + drawn >= -1) status = pill('warn', drawn ? 'Covered by pending settlement and planned draws' : 'Covered only if pending withdrawals settle');
+      else { draw = Math.min(-(cash+pend+drawn), cap); cap -= draw; drawn += draw;
+        status = cash + pend + drawn >= -1 ? pill('warn','Needs vault withdrawal' + (pend?' plus pending settlement':'')) : pill('crit','Short ' + tok(-(cash+pend+drawn), a)); }
+      rows.push({date:e.date, label:e.label, asset:a, pendIn:e.pendIn, out:e.out, draw, cash, proj:cash+pend+drawn, cap, status});
+    });
+  });
+  return rows;
+}
+/* ================= data loading ================= */
+async function refresh(){
+  try{ const r = await fetchLive(); const was = SOURCE; applyData(r); SOURCE='live'; FETCHED_AT=r.t; PARTIAL=r.partial; SRC_ERR='';
+    // Holdings were seeded on snapshot share prices; restart the simulation on live prices so no artificial gain appears.
+    if(S.tx.length && was!=='live'){ S = freshState(); seed(); S.notice = `Live data loaded ${hhmm(r.t)}: simulation restarted on live share prices (same $${(Object.values(TARGET_USD).reduce((a,b)=>a+b,0)/1e6).toFixed(0)}M starting vault position).`; }
+    if(S.tx.length) detectMarkets(); return {ok:true}; }
+  catch(e){ return {ok:false, err:e.message}; }
+}
+async function boot(retry){
+  $('#srcBox').innerHTML = 'Vault data <b>loading from Morpho API...</b>';
+  const r = await refresh();
+  if(!r.ok){ SRC_ERR = r.err; if(!retry || SOURCE!=='live'){ const s = snapshotData(); applyData(s); SOURCE='snapshot'; FETCHED_AT=s.t; PARTIAL=[]; } console.warn('Morpho API core query failed:', r.err); }
+  if(!retry) seed();
+  if(SOURCE==='live') detectMarkets();
+  render();
+}
+
+/* ================= renders ================= */
+function render(){
+  buildExceptions();
+  renderSource(); renderCards(); renderOvEx(); renderActivity(); renderVaults();
+  renderPositions(); renderTx(); renderLiq(); renderSim(); renderForecast(); renderEx(); renderReport();
+  $('#cEx').textContent = openEx().length;
+  $('#cTx').textContent = S.tx.filter(t=>!['Reconciled','Rejected'].includes(t.stage) || (t.sub && t.sub.kind==='nonceCancel')).length;
+}
+function tagSet(el, label){ if(!el) return; const live = SOURCE==='live'; el.className = 'tag ' + (live?'live':'snap'); el.textContent = live ? label : 'Snapshot + estimates'; }
+function renderSource(){
+  const box = $('#srcBox');
+  box.innerHTML = SOURCE==='live'
+    ? `Vault data <b>Observed, Morpho API</b><br>Pulled ${hhmm(FETCHED_AT)} · ${dShort(FETCHED_AT)}` + (S.notice?`<br><span class="warnline">${esc(S.notice)}</span>`:'') + (PARTIAL.length ? `<br><span class="warnline" title="${esc(PARTIAL.join(' | '))}">${PARTIAL.length} optional field set${PARTIAL.length>1?'s':''} unavailable (hover)</span>` : '')
+    : `Vault data <b>Snapshot, ${dShort(FETCHED_AT)}</b><br><span class="warnline">Morpho API error: ${esc(SRC_ERR||'unknown')}</span><br><a href="#" id="retry">Retry live</a>`;
+  [['vaultTag','Observed'],['ltTag','Observed'],['liqTag','Observed'],['mktTag','Observed'],['posTag','Observed prices'],['simTag','Observed liquidity']].forEach(([i,l])=>tagSet($('#'+i), l));
+  const r = $('#retry'); if(r) r.onclick = e => { e.preventDefault(); boot(true); };
+}
+function renderCards(){
+  const tv = totalUSD();
+  const vaultV = VAULTS.reduce((a,v)=>a+posUSD(v.key),0);
+  const pending = S.tx.filter(t=>!['Reconciled','Rejected'].includes(t.stage));
+  const by = s => pending.filter(t=>t.stage===s).length;
+  const cashUSD = Object.keys(S.chain.wallet).reduce((a,k)=>a+walletUSD(k),0);
+  const freeCash = Object.keys(S.chain.wallet).reduce((a,k)=>a+Math.max(0,availCash(k))*price(k).v,0);
+  const now = VAULTS.reduce((a,v)=>a+clientNowTok(v)*v.px,0) + freeCash;
+  const ex = openEx(); const acc = accrual(); const accT = acc.reduce((a,x)=>a+x.share,0); const meas = acc.every(x=>x.measured);
+  const rv = acc.filter(x=>x.review).map(x=>x.v.name.replace('Sentora ',''));
+  const basis = meas ? '24h share-price change on shares held all day; flows in the window and incentives excluded'
+    : acc.some(x=>x.basis==='apyEx') ? 'from APY ex-rewards on shares held all day; incentives excluded'
+    : acc.some(x=>x.basis==='apy30') ? 'from 30d net return on shares held all day; reward treatment unknown' : 'no rate available';
+  const cards = [
+    ['Portfolio Value', usd1(tv), `${usd1(vaultV)} in vaults · ${usd1(cashUSD)} wallet cash`, 'positions'],
+    ['Pending Transactions', String(pending.length), `${by('Prepared')} awaiting signature · ${by('Signed')} to broadcast · ${by('Broadcast')} pending · ${by('Confirmed')} to reconcile · ${by('Failed')} failed`, 'tx'],
+    ['Available Liquidity', usd1(now), `${pct(now/tv,0)} of portfolio: standard withdrawal routes plus uncommitted wallet cash`, 'liq'],
+    ['Open Exceptions', String(ex.length), `${usd1(uniqueExposure(ex))} unique exposure (overlaps removed)`, 'ex'],
+    [meas?'Daily Accrual':'Estimated Daily Accrual', susd(accT), basis + (rv.length ? `. Excludes ${rv.join(', ')} (share price move under review)` : ''), 'report']
+  ];
+  $('#questions').innerHTML = cards.map(([l,v,s,tab])=>`<div class="q" data-go="${tab}"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join('');
+}
+const stPill = s => s==='Resolved' ? pill('good','Resolved') : s==='Escalated' ? pill('crit','Escalated') : s==='Acknowledged' ? pill('info','Acknowledged') : pill('neutral','Open');
+function renderOvEx(){
+  const ex = openEx().slice(0,7);
+  $('#ovEx tbody').innerHTML = ex.length ? ex.map(e=>`<tr class="click" data-go="ex"><td>${pill(e.sev, e.sev==='crit'?'High':'Medium')} ${esc(e.title)}</td><td class="n">${usd(e.amount)}</td><td>${esc(e.owner)}</td><td>${stPill(e.status)}</td></tr>`).join('') : `<tr><td colspan="4">${pill('good','Clear')} No open exceptions.</td></tr>`;
+}
+function activity(){
+  const items = [];
+  accrual().forEach(x=>{
+    const v = x.v, bp = (v.sp/v.spY - 1)*1e4;
+    items.push([`${v.name}: share price ${v.spY.toFixed(6)} → ${v.sp.toFixed(6)} (${bp.toFixed(2)} bp, ${x.measured?'measured':'estimated'}) on ${N(x.held)} sh held all day`, x.review ? 'under review' : susd(x.share) + (x.measured?'':' est')]);
+    if(x.inc!=null && Math.abs(x.inc) >= 1) items.push([`${v.name}: incentives at ${pct(v.apyTot - v.apyEx,2)} (accrue outside share price)`, susd(x.inc) + ' est']);
+  });
+  const d0 = at(0,0);
+  S.tx.forEach(t=>t.hist.forEach(([s,d])=>{ if(d >= d0 && /^(Confirmed|Reconciled|Reverted|Rejected|Declined|Cancelled)/.test(s))
+    items.push([`${t.id} ${t.type.toLowerCase()} ${tok(t.amount,t.asset)}: ${s.charAt(0).toLowerCase()+s.slice(1).replace('Sentora ops','Sentora ops')}, ${hhmm(d)}`, s==='Confirmed' ? (t.type==='Withdraw'?'+':'-') + tok(t.amount,t.asset) + ' wallet' : '']); }));
+  return items;
+}
+function renderActivity(){ $('#changes').innerHTML = activity().map(([a,b])=>`<li><span>${esc(a)}</span><span class="d">${esc(b)}</span></li>`).join(''); }
+function renderVaults(){
+  const show30 = VAULTS.some(v=>v.apy30!=null);   // only shown when a 30d return is actually available (snapshot mode)
+  const cols = [['Vault','',null,'26%'],['Asset','',null,'7%'],['Total<br>assets','n',null,'10%'],['Standard<br>liquidity','n','sep','10%'],['Force-<br>deallocation','n',null,'11%'],['Share<br>price','n','sep','10%'],['APY excl.<br>rewards','n','sep','9%'],['APY incl.<br>rewards','n',null,'9%']];
+  if(show30) cols.push(['30d net<br>return','n',null,'8%']);
+  $('#vaultCols').innerHTML = cols.map(c=>`<col style="width:${c[3]}">`).join('');
+  $('#vaultTbl thead').innerHTML = '<tr>' + cols.map(c=>`<th class="${[c[1],c[2]].filter(Boolean).join(' ')}">${c[0]}</th>`).join('') + '</tr>';
+  $('#vaultTbl tbody').innerHTML = VAULTS.map(v=>`<tr><td>${esc(v.name)}<br><a class="note" href="${v.ts}" target="_blank" rel="noopener">Trading Strategy</a> · <a class="note" href="https://etherscan.io/address/${v.addr}" target="_blank" rel="noopener">${short(v.addr)}</a></td><td>${v.asset}</td>
+    <td class="n">${P(v,'tvl',usd1(v.tvl))}</td><td class="n sep">${P(v,'liq',usd1(v.liq))}</td><td class="n">${P(v,'force',usd1(v.force))}</td>
+    <td class="n sep">${P(v,'sp',v.sp.toFixed(6))}</td><td class="n sep">${P(v,'apyEx',pct(v.apyEx,2))}</td><td class="n">${P(v,'apyTot',pct(v.apyTot,2))}</td>${show30?`<td class="n">${P(v,'apy30',pct(v.apy30,2))}</td>`:''}</tr>`).join('');
+}
+function renderPositions(){
+  const rows = holdings(); const tv = rows.reduce((a,r)=>a+r.usd,0);
+  const colors = ['#1B2A41','#3E5577','#7C8FAD','#A0712B','#C9A46A','#D9CDB8'];
+  $('#capStack').innerHTML = `<div class="stack">${rows.map((r,i)=>`<div style="width:${(r.usd/tv*100).toFixed(2)}%;background:${colors[i]}" title="${esc(r.label)}: ${usd(r.usd)}"></div>`).join('')}</div>
+    <div class="legend">${rows.map((r,i)=>`<span><i style="background:${colors[i]}"></i>${esc(r.label)} ${usd1(r.usd)}</span>`).join('')}</div>`;
+  $('#posTbl tbody').innerHTML = rows.map(r=>`<tr><td>${esc(r.label)}</td><td class="n">${r.qtyLabel}</td><td class="n">${r.v?P(r.v,'sp',r.sp.toFixed(6)):''}</td><td class="n">${tok(r.under,r.asset)}</td><td class="n">${pxHTML(r.asset)}</td><td class="n">${usd(r.usd)}</td><td class="n">${pct(r.usd/tv)}</td><td class="n">${r.vaultShare==null?'':pct(r.vaultShare,2)}</td></tr>`).join('')
+    + `<tr class="total"><td>Total</td><td></td><td></td><td></td><td></td><td class="n">${usd(tv)}</td><td class="n">100.0%</td><td></td></tr>`;
+  const lt = [];
+  VAULTS.forEach(v=>{ const share = posUSD(v.key)/v.tvl;
+    if(!v.mkts.length) lt.push({v, m:{label:'Allocation unavailable'}, look:null});
+    groupSmall(v.mkts).forEach(m=>lt.push({v, m, look:m.alloc*share}));
+    if(v.idle>1000) lt.push({v, m:{label:'Idle (unallocated)', alloc:v.idle, idle:true}, look:v.idle*share}); });
+  $('#ltTbl tbody').innerHTML = lt.map(x=>{ const key = x.m.idle?'idle':'alloc';
+    const util = x.m.util!=null ? `<span title="Observed: Morpho marketById">${pct(x.m.util)}</span>` : x.m.utilRange ? `<span title="Observed across grouped markets">${pct(x.m.utilRange[0],1)===pct(x.m.utilRange[1],1) ? pct(x.m.utilRange[0]) : pct(x.m.utilRange[0],0)+'–'+pct(x.m.utilRange[1],0)}</span>` : '<span class="na" title="Not observed">n/a</span>';
+    const label = x.m.members ? `<span title="${esc(x.m.members)}">${esc(x.m.label)}</span>` : esc(x.m.label);
+    return `<tr><td>${esc(x.v.name)}</td><td>${label}</td><td class="n">${x.m.alloc==null?P(x.v,'alloc',''):P(x.v,key,usdM(x.m.alloc))}</td><td class="n">${x.look==null?'n/a':(x.v.p[key]==='obs'?C(usdM(x.look),'simulated client share × observed allocation'):P(x.v,key,usdM(x.look)))}</td><td class="n">${util}</td></tr>`; }).join('');
+  $('#reconTbl tbody').innerHTML = recon().map(r=>{
+    const st = r.type==='Matched' ? pill('good','Matched') : pill(r.type==='Price'?'warn':'crit', r.type);
+    const q = x => r.unit==='sh' ? N(x)+' sh' : tok(x, r.unit);
+    return `<tr><td>${esc(r.label)}</td><td class="n">${q(r.lq)}</td><td class="n">${q(r.cq)}</td><td class="n">${r.lp!=null?r.lp.toFixed(6):''}</td><td class="n">${r.sp!=null?P(V[r.k],'sp',r.sp.toFixed(6)):''}</td><td class="n">${Math.abs(r.qd)<1?'$0':susd(r.qd)}</td><td class="n">${Math.abs(r.pd)<1?'$0':susd(r.pd)}</td><td class="n">${Math.abs(r.diff)<1?'$0':susd(r.diff)}</td><td>${st}</td><td class="ex-ev">${esc(r.ops.map(o=>o.text).join('; '))}</td></tr>`;
+  }).join('');
+}
+function checklist(t){
+  const v = V[t.vault]; const rows = [];
+  const ok = b => b ? pill('good','OK') : pill('crit','Check');
+  rows.push(['Chain', 'Ethereum mainnet (chain ID 1)', null]);
+  rows.push(['Contract', `<a href="https://etherscan.io/address/${v.addr}" target="_blank" rel="noopener">${short(v.addr)}</a> ${esc(v.name)}`, null]);
+  if(t.type==='Deposit'){ const al = S.allowance[t.asset][t.vault]||0; rows.push(['Allowance', `${al >= 1e11 ? 'Unlimited' : tok(al,t.asset)} vs ${tok(t.amount,t.asset)}`, al >= t.amount]); }
+  else rows.push(['Allowance', 'Not required (redeem shares)', null]);
+  rows.push(['ETH gas balance', `${S.gasEth.toFixed(3)} ETH (policy minimum 0.010)`, S.gasEth >= 0.01]);
+  if(!['Reconciled','Rejected','Confirmed'].includes(t.stage) && !t.applied){
+    const f = controlCheck(t, t.stage==='Prepared'?'sign':'broadcast').filter(x=>!/Allowance|gas/.test(x));
+    rows.push(['Balance check', t.type==='Withdraw' ? `Unreserved position ${tok(Math.max(0,availPos(t.vault,t.id)),t.asset)}` : `Unreserved wallet ${tok(Math.max(0,availCash(t.asset,t.id)),t.asset)}`, !f.length]);
+    if(t.type==='Withdraw') rows.push(['Vault liquidity', `Available ${tok(availLiq(v,t.id),t.asset)} (standard route)`, liqCheck(t)==null]);
+  }
+  rows.push(['Signature', t.signer ? esc(t.signer) : 'Awaiting client signature', t.signer ? true : null]);
+  rows.push(['Nonce / fee', t.nonce!=null ? `${t.nonce} · priority fee ${t.fee} gwei` : 'Assigned when the client signs', null]);
+  if(t.sub) rows.push([{approval:'Approval tx', replace:'Replacement', nonceCancel:'Nonce cancellation'}[t.sub.kind], `${t.sub.step}${t.sub.nonce!=null?' · nonce '+t.sub.nonce:''}`, null]);
+  rows.push(['Tx hash', t.hash ? `<span class="m">${short(t.hash)}</span>` : 'Not broadcast', null]);
+  rows.push(['Confirmation', esc(t.conf || 'Not broadcast'), t.conf ? (/Confirmed/.test(t.conf) ? true : /Reverted/.test(t.conf) ? false : null) : null]);
+  return `<table class="chk"><tbody>${rows.map(([k,val,good])=>`<tr><td class="k">${k}</td><td>${val}</td><td>${good==null?'':ok(good)}</td></tr>`).join('')}</tbody></table>`;
+}
+function renderTx(){
+  $('#txTbl tbody').innerHTML = S.tx.slice().reverse().map(t=>`<tr class="click ${S.selTx===t.id?'sel':''}" data-tx="${t.id}"><td class="m">${t.id}</td><td>${t.type}</td><td>${esc(V[t.vault].name.replace('Sentora ',''))}</td><td class="n">${tok(t.amount,t.asset)}</td><td>${stageDots(t)}</td><td>${txStatus(t)}</td></tr>`).join('');
+  const t = S.tx.find(x=>x.id===S.selTx);
+  if(!t){ $('#txDetail').innerHTML = '<p class="note">Select a transaction to see its checklist, history, and next step.</p>'; return; }
+  const acts = nextActions(t) || [];
+  $('#txDetail').innerHTML = `<h3>${t.id} · ${t.type} ${tok(t.amount,t.asset)}</h3><div>${txStatus(t)}</div>
+    <div class="kv"><span class="k">Requested by</span><span>${esc(t.requester)}</span><span class="k">Prepared by</span><span>${esc(t.preparer)}</span>${t.note?`<span class="k">Note</span><span>${esc(t.note)}</span>`:''}${t.reject?`<span class="k">Disposition</span><span>${esc(t.reject)}</span>`:''}</div>
+    ${checklist(t)}
+    <ul class="timeline">${t.hist.map(([s,d,c])=>`<li class="${c||''}"><span class="t">${hhmm(d)}${etDay(d)!==etDay(NOW)?' (prior day)':''}</span>${esc(s)}</li>`).join('')}${t.flag==='Delayed'&&!t.sub?`<li class="wait"><span class="t">now</span>Waiting for inclusion</li>`:''}</ul>
+    <div class="row">${acts.map(([a,l])=>`<button class="btn ${/decline|cancel/.test(a)?'danger':''}" data-txact="${a}">${l}</button>`).join(' ')}</div>
+    ${t.flag==='Blocked'?`<div class="callout crit">Withdrawal exceeds the vault's available standard liquidity. An escalation record is in Exceptions. Amending returns the request to the client for a new signature.</div>`:''}
+    ${S.lastMsg?`<div class="callout crit">${esc(S.lastMsg)}</div>`:''}`;
+}
+function renderLiq(){
+  $('#liqTbl tbody').innerHTML = VAULTS.map(v=>{ const pos = posTok(v.key), now = clientNowTok(v), sim = S.simLiq[v.key], res = reservedLiq(v.key);
+    return `<tr><td>${esc(v.name)}</td><td class="n sep">${P(v,'idle',tok(v.idle/v.px, v.asset))}</td><td class="n">${P(v,'liq',tok(v.liq/v.px, v.asset))}</td><td class="n">${sim? tok(sim,v.asset)+' <span class="tag sim">sim</span>' : '0'}</td><td class="n">${res?tok(res,v.asset):'0'}</td><td class="n"><b>${v.p.liq==='obs' ? C(tok(availLiq(v),v.asset),'observed standard liquidity + session changes - pending reservations') : P(v,'liq',tok(availLiq(v),v.asset))}</b></td><td class="n sep">${P(v,'force',v.force==null?'':tok(v.force/v.px,v.asset))}</td><td class="n sep">${tok(pos,v.asset)}</td><td class="n" title="Simulated calculation on observed vault data">${now>=availPos(v.key)-1?pill('good','All '+tok(Math.max(0,availPos(v.key)),v.asset)):pill('warn',tok(now,v.asset))}</td></tr>`; }).join('');
+  if(!$('#wVault').options.length) $('#wVault').innerHTML = VAULTS.map(v=>`<option value="${v.key}">${esc(v.name)}</option>`).join('');
+  const v = V[$('#wVault').value]; const rows = groupSmall(v.mkts);
+  const max = Math.max(...rows.map(m=>m.alloc), v.idle||0, 1);
+  const any = rows.some(m=>m.mliq!=null);
+  $('#mktBars').innerHTML = ((v.idle||0)>1000 ? `<div class="hbar"><span>Idle ${v.p.idle==='est'?'<sup class="est">est</sup>':''}</span><div class="track"><div class="fill in" style="width:${(v.idle/max*100).toFixed(1)}%"></div></div><span class="v">${usdM(v.idle)}</span></div>` : '') +
+    (rows.length ? rows.map(m=>{ const r = m.mliq==null ? null : Math.min(m.alloc, m.mliq);
+      return `<div class="hbar" title="${esc(m.members||m.label)}: ${usdM(m.alloc)} allocated${r!=null?', '+usdM(r)+' releasable now':''}${m.util!=null?', utilization '+pct(m.util):''}"><span>${esc(m.label)} ${v.p.alloc==='est'?'<sup class="est">est</sup>':''}</span><div class="track"><div class="fill" style="width:${(m.alloc/max*100).toFixed(1)}%"></div>${r!=null?`<div class="fill in" style="width:${(r/max*100).toFixed(1)}%"></div>`:''}</div><span class="v">${r!=null?usdM(r)+' / ':''}${usdM(m.alloc)}</span></div>`; }).join('')
+    : `<p class="note">Allocation unavailable. ${esc(v.why.alloc||'')}</p>`) +
+    (rows.length && !any ? `<p class="note">Market-level liquidity was not observed, so only allocations are shown.</p>` : '');
+}
+function renderSim(){
+  const v = V[$('#wVault').value];
+  const amtRaw = parseFloat($('#wAmt').value), aheadRaw = parseFloat($('#wAhead').value || '0');
+  if(!(amtRaw > 0) || !isFinite(amtRaw) || !(aheadRaw >= 0) || !isFinite(aheadRaw)){ $('#wResult').innerHTML = `<div class="callout crit">Enter a withdrawal greater than zero and a non-negative amount ahead.</div>`; return; }
+  const amt = amtRaw*1e6, ahead = aheadRaw*1e6;
+  const pos = Math.max(0, availPos(v.key)); const avail = availLiq(v, null, ahead);
+  const force = v.force!=null ? v.force/v.px : null;
+  let html = `<div class="kv"><span class="k">Standard liquidity</span><span>${P(v,'liq',tok(stdLiqTok(v),v.asset))}</span><span class="k">Reserved by pending</span><span>${tok(reservedLiq(v.key),v.asset)}</span><span class="k">Assumed ahead</span><span>${tok(ahead,v.asset)} <span class="tag sim">Simulated</span></span><span class="k">Available to client</span><span><b>${tok(avail,v.asset)}</b></span><span class="k">Force-deallocatable</span><span>${P(v,'force',force==null?'':tok(force,v.asset))}</span><span class="k">Client unreserved position</span><span>${tok(pos,v.asset)}</span></div>`;
+  if(amt > pos + 1) html += `<div class="callout crit">Request exceeds the client's unreserved position of ${tok(pos,v.asset)} and would be rejected at signing.</div>`;
+  else if(amt <= avail) html += `<div class="callout good">${pill('good','Covered')} ${tok(amt,v.asset)} can be paid through the standard route. ${tok(avail-amt,v.asset)} of headroom remains.</div>`;
+  else {
+    const sh = amt - avail;
+    const r2 = force==null ? 'Force-deallocatable liquidity is not observed, so the second route cannot be assessed.' : (sh <= force ? `The second route, force-deallocation (${tok(force,v.asset)} observed), could cover the gap. It requires an additional deallocation step, potentially bundled with the withdrawal; a penalty may apply.` : `Force-deallocation (${tok(force,v.asset)} observed) would not cover the full gap.`);
+    html += `<div class="callout crit">${pill('crit','Shortfall '+tok(sh,v.asset))} Only ${tok(avail,v.asset)} of ${tok(amt,v.asset)} is available through the standard route (${pct(avail/amt,0)}).<br>${r2}<br>Lent assets also become available as borrowers repay, new lenders supply the market, or the curator reallocates.</div>
+      <div class="row" style="margin-top:10px"><button class="btn" id="mkEsc">Create escalation record</button><span class="note">Adds a liquidity exception with evidence, owner and proposed action.</span></div>`;
+  }
+  $('#wResult').innerHTML = html;
+  const b = $('#mkEsc'); if(b) b.onclick = ()=>{ const e = escalate(v, amt, ahead, null); render(); showTab('ex'); flash(e.id); };
+}
+function renderForecast(){
+  $('#fcTbl tbody').innerHTML = forecast().map(r=>`<tr${r.date?'':' class="total"'}><td>${r.date?dShort(r.date):'Today'}</td><td>${esc(r.label)}</td><td>${r.asset}</td><td class="n">${r.pendIn?tok(r.pendIn,r.asset):''}</td><td class="n">${r.out?tok(r.out,r.asset):''}</td><td class="n">${r.draw?tok(r.draw,r.asset):''}</td><td class="n">${tok(r.cash,r.asset)}</td><td class="n">${tok(r.proj,r.asset)}</td><td class="n">${tok(r.cap,r.asset)}</td><td>${r.status}</td></tr>`).join('');
+}
+function exButtons(e){
+  if(e.status==='Resolved') return `<span class="note">${esc(e.resolution||'')}</span>`;
+  const b = [];
+  if(e.status==='Open') b.push(['ack','Acknowledge','ghost']);
+  if((e.kind==='liq' || e.kind==='mkt' || e.kind==='data') && e.status!=='Escalated') b.push(['escalate','Escalate','ghost']);
+  if(e.kind==='recon') b.push(['fix','Apply correction','']);
+  if(e.kind==='tx' && !e.ackOnly) b.push(['go','Open transaction','']);
+  if(e.kind==='liq' || e.kind==='mkt') b.push(['recheck','Re-check (refresh data)','']);
+  if(e.ackOnly && e.status!=='Open') b.push(['close','Close','']);
+  return b.map(([a,l,c])=>`<button class="btn sm ${c}" data-ex="${e.id}" data-a="${a}" ${a==='go'?`data-txgo="${e.ref}"`:''}>${l}</button>`).join(' ') + (e.note?`<div class="note" style="margin-top:4px">${esc(e.note)}</div>`:'');
+}
+function renderEx(){
+  const ex = buildExceptions();
+  $('#exTbl tbody').innerHTML = ex.map(e=>`<tr id="row-${e.id}"><td class="m">${e.id}</td><td>${esc(e.title)}</td><td class="n">${usd(e.amount)}</td><td class="ex-ev">${esc(e.evidence)}</td><td>${esc(e.owner)}</td><td class="ex-ev">${esc(e.action)}</td><td>${stPill(e.status)}</td><td style="min-width:180px">${exButtons(e)}</td></tr>`).join('')
+    || `<tr><td colspan="8">${pill('good','Clear')} No exceptions.</td></tr>`;
+}
+function renderReport(){
+  const rows = holdings(); const tv = rows.reduce((a,r)=>a+r.usd,0); const ex = openEx(); const L = [];
+  L.push(`CLIENT DAILY UPDATE  |  ${dateStr(NOW)}, ${hhmm(new Date())}`);
+  L.push(`From: Sentora operations (simulated)   To: Client treasury team (simulated)`);
+  L.push(SOURCE==='live' ? `Vault data: observed, Morpho API ${hhmm(FETCHED_AT)}${PARTIAL.length?' ('+PARTIAL.length+' optional field sets unavailable)':''}` : `Vault data: snapshot ${dShort(FETCHED_AT)}; total assets and APY observed, other vault figures estimated (API error: ${SRC_ERR})`);
+  L.push('');
+  L.push(`1. POSITIONS  (total ${usd(tv)})`);
+  rows.forEach(r=>L.push(`   ${r.label.padEnd(32)} ${tok(r.under,r.asset).padStart(16)}   ${usd(r.usd).padStart(10)}   ${pct(r.usd/tv).padStart(6)}`));
+  L.push('');
+  L.push('2. DAILY ACTIVITY');
+  activity().forEach(([a,b])=>L.push(`   - ${a}${b?'  '+b:''}`));
+  L.push('');
+  L.push('3. TRANSACTIONS IN FLIGHT');
+  const inflight = S.tx.filter(t=>!['Reconciled','Rejected'].includes(t.stage));
+  if(!inflight.length) L.push('   None.');
+  inflight.forEach(t=>L.push(`   - ${t.id} ${t.type} ${tok(t.amount,t.asset)}, ${V[t.vault].name}: ${t.stage}${t.flag?' ('+t.flag.toLowerCase()+')':''}${t.sub?' ('+t.sub.kind+' '+t.sub.step+')':''}`));
+  L.push('');
+  L.push(`4. OPEN EXCEPTIONS  (${ex.length}; unique exposure ${usd(uniqueExposure(ex))})`);
+  if(!ex.length) L.push('   None.');
+  ex.forEach(e=>L.push(`   - [${e.sev==='crit'?'HIGH':'MED'}] [${e.status.toUpperCase()}] ${e.title}: ${usd(e.amount)}. Owner: ${e.owner}. Next: ${e.action}.`));
+  L.push('');
+  L.push('5. FUNDING FORECAST  (settled = confirmed balances only; projected adds pending withdrawals and planned vault draws)');
+  forecast().forEach(r=>{ const st = r.status.replace(/<[^>]+>/g,'').replace(/&#\d+;/g,'').replace(/\s+/g,' ').trim();
+    L.push(`   ${(r.date?dShort(r.date):'Today').padEnd(12)} ${r.asset.padEnd(6)} ${r.label.padEnd(46)} settled ${tok(r.cash,r.asset).padStart(13)}  projected ${tok(r.proj,r.asset).padStart(13)}${r.draw?'  draw '+tok(r.draw,r.asset):''}${st?'  '+st:''}`); });
+  $('#report').textContent = L.join('\n');
+}
+
+/* ================= wiring ================= */
+function showTab(name){
+  $$('nav.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===name));
+  $$('section.tab').forEach(s=>s.classList.toggle('on', s.id==='tab-'+name));
+  window.scrollTo({top: $('nav.tabs').offsetTop - 10, behavior:'smooth'});
+}
+function flash(id){ const r = $('#row-'+id); if(r){ r.classList.add('sel'); setTimeout(()=>r.classList.remove('sel'), 2500); } }
+$$('nav.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+document.addEventListener('click', e=>{
+  const g = e.target.closest('[data-go]'); if(g){ showTab(g.dataset.go); return; }
+  const tg = e.target.closest('[data-txgo]'); if(tg){ S.selTx = tg.dataset.txgo; S.lastMsg=''; renderTx(); showTab('tx'); return; }
+  const tr = e.target.closest('[data-tx]'); if(tr){ S.selTx = tr.dataset.tx; S.lastMsg=''; renderTx(); return; }
+  const ta = e.target.closest('[data-txact]'); if(ta){ txAct(S.selTx, ta.dataset.txact); return; }
+  const ex = e.target.closest('[data-ex]'); if(ex){ exAct(ex.dataset.ex, ex.dataset.a); return; }
+});
+$('#wVault').addEventListener('change', ()=>{ renderLiq(); renderSim(); });
+['#wAmt','#wAhead'].forEach(s=>$(s).addEventListener('input', renderSim));
+$('#presetNormal').onclick = ()=>{ $('#wAmt').value = 6; $('#wAhead').value = 0; renderSim(); };
+$('#presetFull').onclick = ()=>{ const v = V[$('#wVault').value]; $('#wAmt').value = (Math.max(0,availPos(v.key))/1e6).toFixed(1); $('#wAhead').value = 0; renderSim(); };
+$('#presetStress').onclick = ()=>{ const v = V[$('#wVault').value]; const pos = Math.max(0,availPos(v.key));
+  $('#wAmt').value = (pos/1e6).toFixed(1); $('#wAhead').value = Math.max(0, Math.floor((stdLiqTok(v) - reservedLiq(v.key) - pos*0.4)/1e6)); renderSim(); };
+$('#regen').onclick = renderReport;
+$('#copyRep').onclick = async ()=>{ try{ await navigator.clipboard.writeText($('#report').textContent); $('#copyRep').textContent='Copied'; setTimeout(()=>$('#copyRep').textContent='Copy report',1500);}catch(e){ $('#copyRep').textContent='Select and copy manually'; } };
+
+boot(false);
+})();
+</script>
+</body>
+</html>

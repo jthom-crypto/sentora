@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KX95QKZWM5"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-KX95QKZWM5');
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeFi Treasury Operations | Justin Thom</title>
+<meta name="description" content="A simulated institutional treasury sizing deployable PYUSD, comparing Sentora-curated vaults, checking allocations against treasury policy, and preparing an approval record.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1B2A41; --navy2:#2C3E5A; --bronze:#A0712B; --bronze-soft:#E9DCC6;
+  --paper:#F6F2EA; --card:#FFFDF8; --ink:#1B2A41; --ink2:#3A4456; --muted:#6B7280;
+  --line:#E2DACB; --line2:#EEE7DA;
+  --good:#2E7D4F; --good-bg:#E5F2EA; --warn:#B26A00; --warn-bg:#FBF0DD; --crit:#B23A3A; --crit-bg:#F8E3E3;
+  --info:#2C3E5A; --info-bg:#E6ECF5;
+  --bar:#2C3E5A; --bar2:#9AA8BC;
+  --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}
+a{color:var(--navy)}
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+
+header.top{background:var(--card);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;justify-content:space-between;align-items:center;height:60px;gap:12px}
+.top .name{font-weight:600;font-size:17px}
+.top .role{font-size:14px;color:var(--ink2)}
+a.role{text-decoration:none}
+a.role:hover{text-decoration:underline}
+.rule{height:3px;background:var(--bronze)}
+
+.intro{padding:22px 0 6px;display:flex;justify-content:space-between;gap:24px;align-items:flex-end;flex-wrap:wrap}
+.intro h1{margin:0 0 6px;font-size:26px;font-weight:600}
+.intro p{margin:0;color:var(--ink2);max-width:780px}
+.src{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right;min-width:260px;max-width:360px;margin-left:auto}
+.src b{color:var(--ink)}
+
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-top:14px;overflow-x:auto}
+nav.tabs button{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:1px;background:none;border:0;padding:12px 14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+nav.tabs button:hover{color:var(--ink)}
+nav.tabs button.on{color:var(--ink);border-bottom-color:var(--bronze)}
+nav.tabs .count{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--bronze-soft);color:var(--ink);font-size:11px;text-align:center}
+
+section.tab{display:none;padding:20px 0 40px}
+section.tab.on{display:block}
+
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:3fr 2fr}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+.card h2{margin:0 0 2px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card .lead{margin:0 0 12px;color:var(--muted);font-size:12.5px}
+.mt{margin-top:16px}
+
+.qgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.q{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.q:hover{border-color:var(--bronze)}
+.q .l{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.q .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.q .s{font-size:12px;color:var(--ink2)}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:0;color:var(--ink2);text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:bottom;line-height:1.3}
+td{padding:9px 8px;border-bottom:1px solid var(--line2);vertical-align:middle}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td.m{font-family:var(--mono);font-size:12px}
+tr.total td{font-weight:600;border-top:1px solid var(--line);background:transparent!important}
+tr.click{cursor:pointer}
+tr.click:hover td{background:#FBF7EF}
+tr.sel td{background:#F3ECDF}
+.tbl-wrap{overflow-x:auto}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.pill.good{background:var(--good-bg);color:var(--good)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.crit{background:var(--crit-bg);color:var(--crit)}
+.pill.neutral{background:#ECEFF3;color:var(--ink2)}
+.pill.info{background:var(--info-bg);color:var(--info)}
+.tag{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.8px;text-transform:uppercase;padding:2px 7px;border-radius:4px;border:1px solid}
+.tag.live{color:var(--good);border-color:#9CC9AD;background:var(--good-bg)}
+.tag.snap{color:var(--warn);border-color:#E5C48E;background:var(--warn-bg)}
+.tag.sim{color:var(--ink2);border-color:#C9CFD8;background:#F1F3F6}
+
+.btn{font-family:var(--sans);font-size:12.5px;font-weight:500;border-radius:6px;padding:7px 12px;border:1px solid var(--navy);background:var(--navy);color:#fff;cursor:pointer}
+.btn:hover{background:var(--navy2)}
+.btn.ghost{background:transparent;color:var(--navy)}
+.btn.ghost:hover{background:#EEF1F5}
+.btn.danger{background:transparent;color:var(--crit);border-color:var(--crit)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.sm{padding:4px 9px;font-size:12px}
+select,input[type=number]{font-family:var(--sans);font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spacer{flex:1}
+label.f{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.note{font-size:12px;color:var(--muted)}
+
+.stack{display:flex;height:16px;border-radius:0 4px 4px 0;overflow:hidden;gap:2px;background:var(--card)}
+.stack div{height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.hbar{display:grid;grid-template-columns:200px 1fr 170px;gap:10px;align-items:center;margin:8px 0;font-size:12.5px}
+.hbar .track{height:14px;background:var(--line2);border-radius:0 4px 4px 0;position:relative;overflow:hidden}
+.hbar .fill{position:absolute;left:0;top:0;bottom:0;background:var(--bar2);border-radius:0 4px 4px 0}
+.hbar .fill.in{background:var(--bar)}
+.hbar .v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.stages{display:flex;align-items:center;gap:0}
+.stages span{width:12px;height:12px;border-radius:50%;background:var(--line);border:2px solid var(--line)}
+.stages span.done{background:var(--bar);border-color:var(--bar)}
+.stages span.cur{background:var(--card);border-color:var(--bar)}
+.stages span.fail{background:var(--crit);border-color:var(--crit)}
+.stages span.delay{background:var(--card);border-color:var(--warn)}
+.stages i{width:12px;height:2px;background:var(--line)}
+.stages i.done{background:var(--bar)}
+
+.detail h3{margin:0 0 6px;font-size:15px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:6px 10px;font-size:13px;margin:10px 0}
+.kv .k{color:var(--muted);font-size:12px}
+.timeline{list-style:none;margin:8px 0 14px;padding:0;border-left:2px solid var(--line);font-size:13px}
+.timeline li{padding:3px 0 8px 12px;position:relative}
+.timeline li:before{content:'';position:absolute;left:-6px;top:8px;width:10px;height:10px;border-radius:50%;background:var(--bar)}
+.timeline li.bad:before{background:var(--crit)}
+.timeline li.wait:before{background:var(--warn)}
+.timeline .t{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-right:6px}
+.callout{background:#F3ECDF;border-left:3px solid var(--bronze);padding:10px 12px;border-radius:0 6px 6px 0;font-size:13px;color:var(--ink2);margin-top:12px}
+.callout.crit{background:var(--crit-bg);border-left-color:var(--crit)}
+.callout.good{background:var(--good-bg);border-left-color:var(--good)}
+.ex-ev{font-size:12px;color:var(--ink2)}
+pre.report{font-family:var(--mono);font-size:12px;line-height:1.55;background:#FBF8F2;border:1px solid var(--line);border-radius:6px;padding:14px;white-space:pre-wrap;margin:0;max-height:640px;overflow:auto}
+.changes{list-style:none;margin:0;padding:0}
+.changes li{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line2);font-size:13px}
+.changes li:last-child{border-bottom:0}
+.changes .d{margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.est{font-style:italic;color:var(--warn)}
+.est sup,sup.est{font-size:9px;font-style:normal;font-family:var(--mono);margin-left:2px;color:var(--warn)}
+.na{color:var(--muted)}
+.warnline{color:var(--warn)}
+.prov{font-size:12px;color:var(--muted);margin:10px 0 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.roles{margin:8px 0 6px;padding-left:18px;color:var(--ink2)}
+.roles li{margin:2px 0}
+.chk{width:100%;margin:8px 0 12px;font-size:12.5px}
+.chk td{padding:5px 6px;border-bottom:1px solid var(--line2)}
+.chk td.k{color:var(--muted);width:120px;font-size:12px}
+#fcTbl td{white-space:nowrap}
+#reconTbl td.n,#posTbl td.n{white-space:nowrap}
+#fcTbl td:nth-child(2){white-space:normal}
+.calc{border-bottom:1px dotted var(--ink2);cursor:help}
+table.data tbody tr:nth-child(even) td{background:#FAF6EE}
+table.data tbody tr:hover td{background:#F3ECDF}
+#vaultTbl{table-layout:fixed;min-width:860px}
+#vaultTbl td,#vaultTbl th{white-space:nowrap}
+#vaultTbl td:first-child{white-space:normal}
+#vaultTbl .sep,#liqTbl .sep{border-left:1px solid var(--line)}
+#liqTbl td.n{white-space:nowrap}
+.callout.scen{margin:12px 0 0}
+details.bg{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+details.bg summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--ink)}
+details.bg[open] summary{margin-bottom:6px}
+.bgdetail h3{font-size:13px;margin:12px 0 2px;color:var(--ink2)}
+.srcrow{margin:12px 0 0}
+footer{border-top:1px solid var(--line);padding:18px 0 30px;color:var(--muted);font-size:12px}
+footer p{margin:0 0 6px}
+
+@media (max-width:1050px){
+  .qgrid{grid-template-columns:repeat(2,1fr)}
+  .g2,.g3{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .qgrid{grid-template-columns:1fr}
+  .hbar{grid-template-columns:110px 1fr 90px}
+  .src{text-align:left}
+}
+
+.slider{display:grid;grid-template-columns:170px 1fr 64px;gap:10px;align-items:center;margin:8px 0;font-size:13px}
+.slider input{accent-color:var(--navy);width:100%}
+.slider .v{font-family:var(--mono);text-align:right}
+.facts{margin:0;padding-left:18px;font-size:13px;color:var(--ink2)}
+.facts li{margin:6px 0}
+.ltv{position:relative;height:18px;background:var(--line2);border-radius:0 4px 4px 0;margin:30px 0 30px}
+.ltv .fill{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0;background:var(--bar)}
+.ltv .fill.warn{background:var(--warn)} .ltv .fill.info{background:#6B7FA0}
+.ltv .tick.below span{bottom:auto;top:100%;margin:2px 0 0} .ltv .fill.crit{background:var(--crit)}
+.ltv .tick{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink2)}
+.ltv .tick span{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-size:11px;color:var(--ink2);white-space:nowrap;margin-bottom:2px}
+.ltv .tick.w{background:var(--warn)} .ltv .tick.h{background:var(--crit)} .ltv .tick.l{background:#000}
+.ltv .tick.l span{font-weight:600}
+.ltvlabel{font-size:13px;display:flex;gap:10px;align-items:center}
+label.ck{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;margin:8px 0}
+label.ck input[type=checkbox]{accent-color:var(--navy);width:15px;height:15px}
+tr.cur td{font-weight:600}
+#posTbl td.note{font-size:12px}
+.q .v{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+@media (max-width:640px){.slider{grid-template-columns:1fr 60px}.slider label{grid-column:1/-1}}
+
+.stg{margin:10px 0}
+.stg .track{height:10px;background:var(--line2);border-radius:0 4px 4px 0;margin-top:5px}
+.stg .fill{height:100%;background:var(--bar);border-radius:0 4px 4px 0}
+.stg .fill.b{background:var(--crit)}
+ol.cp{margin:0;padding-left:20px;font-size:13px}
+ol.cp li{margin:7px 0}
+.gantt{font-size:12px}
+.gh,.gr{display:grid;grid-template-columns:300px 1fr;gap:10px;align-items:center}
+.gr{padding:4px 0;border-bottom:1px solid var(--line2)}
+.gl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gscale{display:flex}
+.gscale span{flex:1;text-align:center;color:var(--muted);font-size:10.5px;border-left:1px solid var(--line2)}
+.gtrack{position:relative;height:14px;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(100%/var(--n) - 1px),var(--line2) calc(100%/var(--n) - 1px),var(--line2) calc(100%/var(--n)))}
+.gbar{position:absolute;top:2px;bottom:2px;background:var(--bar2);border-radius:2px}
+.gbar.cp{background:var(--navy)} .gbar.blk{background:var(--crit)}
+.gtgt{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--bronze)}
+h3.stgh{font-size:14px;margin:18px 0 6px}
+h3.stgh:first-child{margin-top:4px}
+.dd{color:var(--good)} .dw{color:var(--warn);font-weight:600}
+table.chkl{table-layout:fixed;min-width:900px}
+table.chkl select{font-size:12px;padding:4px 6px;width:100%}
+@media (max-width:760px){.gh,.gr{grid-template-columns:140px 1fr}}
+
+.cb{margin:12px 0}
+.cb .stack{margin-top:6px}
+.ap{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line2);font-size:13px}
+#allocTbl td:first-child{white-space:nowrap}
+#allocTbl td.lim{white-space:normal;min-width:110px}
+.allocgrid{grid-template-columns:minmax(0,1fr) 370px}
+#sumTbl td.n{white-space:nowrap}
+#allocTbl th{white-space:nowrap;vertical-align:bottom}
+#allocTbl th,#allocTbl td{padding-left:12px;padding-right:12px}
+#allocTbl td.n{white-space:nowrap}
+#allocTbl #aDep{white-space:normal}
+#allocTbl input.amt{width:68px!important}
+@media (max-width:1000px){.allocgrid{grid-template-columns:1fr}}
+#vTbl td:first-child{min-width:170px}
+#vTbl td:last-child{min-width:160px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="role" href="../" title="All work samples">Independent Work Sample</a>
+    <div class="name">Justin Thom</div>
+  </div>
+  <div class="rule"></div>
+</header>
+
+<main class="wrap">
+  <div class="intro">
+    <div>
+      <h1>DeFi Treasury Operations</h1>
+      <p>A simulated institutional treasury workflow for allocating PYUSD to Sentora-curated vaults.</p>
+      <ul class="roles">
+        <li><b>Client:</b> Holds PYUSD in its own Fireblocks custody, with upcoming payments and a required cash reserve.</li>
+        <li><b>Operations:</b> Determines how much can be invested, compares eligible vaults, checks policy limits, and prepares the allocation for approval.</li>
+        <li><b>Vault data:</b> Four vaults accepting PYUSD, sourced from Morpho&rsquo;s public API.</li>
+      </ul>
+      <p class="note">Client balances, payments, policy limits, and approvals are simulated. Values are labeled observed, estimated, or simulated.</p>
+    </div>
+    <div class="src" id="srcBox">Vault data <b>loading...</b></div>
+  </div>
+  <p class="prov"><span class="tag live">Observed</span> <span class="tag snap">Estimated</span> <span class="tag sim">Simulated</span></p>
+
+  <nav class="tabs">
+    <button class="on" data-tab="overview">Overview</button>
+    <button data-tab="vaults">Vaults</button>
+    <button data-tab="alloc">Allocation<span class="count" id="cFail">0</span></button>
+    <button data-tab="exposure">Shared Exposure</button>
+    <button data-tab="approval">Approval Record</button>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section class="tab on" id="tab-overview">
+    <div class="qgrid" id="cards"></div>
+    <div class="grid g2 mt">
+      <div class="card">
+        <h2>Treasury Position <span class="tag sim">Simulated</span></h2>
+        <p class="lead">Cash to keep available.</p>
+        <div class="row" style="margin-bottom:8px">
+          <label class="f">PYUSD balance ($M)<input type="number" id="inBal" value="6" min="0" step="0.5" style="width:100px"></label>
+          <label class="f">Cash reserve ($M)<input type="number" id="inRes" value="1" min="0" step="0.25" style="width:100px"></label>
+        </div>
+        <div class="tbl-wrap"><table class="data" id="treasTbl"><tbody></tbody></table></div>
+      </div>
+      <div class="card">
+        <h2>Proposed Plan</h2>
+        <p class="lead">The current allocation and its policy result.</p>
+        <div class="tbl-wrap"><table class="data" id="planTbl"><thead><tr><th>Vault</th><th class="n">Amount</th><th class="n">Share</th><th class="n">APY excl. rewards</th><th class="n">Est. annual income</th></tr></thead><tbody></tbody></table></div>
+        <div id="planStatus"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VAULTS -->
+  <section class="tab" id="tab-vaults">
+    <div class="card">
+      <h2>Vault Comparison <span class="tag" id="vTag">Observed</span></h2>
+      <p class="lead">Sentora-curated PYUSD vaults on Ethereum. Eligibility uses the treasury's vault criteria; a higher APY alone does not make a vault suitable.</p>
+      <div class="tbl-wrap"><table class="data" id="vTbl"><thead></thead><tbody></tbody></table></div>
+      <p class="note" style="margin-top:8px">Vault criteria: PYUSD on Ethereum; APY excluding rewards at least 2.00%; total assets at least $20M; performance fee at most 20%; standard withdrawal liquidity observed. APYs are Morpho net APYs, already after management and performance fees, so fees are not deducted again from income.</p>
+    </div>
+    <div class="card mt">
+      <h2>Underlying Collateral by Vault <span class="tag" id="cTag">Observed</span></h2>
+      <p class="lead">Each vault's lending split by collateral type, from its adapter positions.</p>
+      <div id="collBars"></div>
+    </div>
+  </section>
+
+  <!-- ALLOCATION -->
+  <section class="tab" id="tab-alloc">
+    <div class="grid allocgrid">
+      <div class="card">
+        <h2>Allocation Builder <span class="tag sim">Simulated</span></h2>
+        <p class="lead">Enter amounts in $M, in $10,000 steps (0.01), or start from a preset. Planning caps are a guide; final allocations must pass all policy checks.</p>
+        <div class="row" style="gap:6px;margin-bottom:10px">
+          <button class="btn ghost sm" data-preset="apy">Highest APY</button>
+          <button class="btn ghost sm" data-preset="suggest">Suggested plan</button>
+          <button class="btn ghost sm" data-preset="clear">Clear</button>
+        </div>
+        <div class="tbl-wrap"><table class="data" id="allocTbl"><thead><tr><th>Vault</th><th class="n">Amount<br>($M)</th><th class="n">Planning<br>cap</th><th class="n">APY excl.<br>rewards</th><th class="n">Est. annual<br>income</th><th>Binding limit</th></tr></thead><tbody></tbody></table></div>
+        <p class="note" id="presetNote" style="margin-top:8px"></p>
+      </div>
+      <div class="card">
+        <h2>Summary</h2>
+        <div class="tbl-wrap"><table class="data" id="sumTbl"><tbody></tbody></table></div>
+      </div>
+    </div>
+    <div class="card mt">
+      <h2>Treasury Policy Checks <span class="tag sim">Simulated policy</span></h2>
+      <p class="lead">Hard limits fail the plan; soft limits warn. A plan with any failure cannot be submitted for approval.</p>
+      <div class="row" style="margin-bottom:10px"><label class="f">Stress scenario: vault liquidity falls by (%)<input type="number" id="inStress" value="90" min="0" max="100" step="5" style="width:80px"></label></div>
+      <div class="tbl-wrap"><table class="data" id="chkTbl"><thead><tr><th>Check</th><th>Limit</th><th class="n">Plan</th><th>Result</th><th>Detail</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- EXPOSURE -->
+  <section class="tab" id="tab-exposure">
+    <div class="card">
+      <h2>Look-Through Collateral Exposure <span class="tag sim">Simulated allocation</span> <span class="tag" id="eTag">Observed composition</span></h2>
+      <p class="lead">The plan's pro-rata share of what each vault lends against, combined across vaults. Collateral reached through more than one vault is flagged as shared.</p>
+      <div class="tbl-wrap"><table class="data" id="expTbl"><thead><tr><th>Collateral</th><th class="n">Exposure</th><th class="n">% of allocation</th><th>Through</th><th>Result</th></tr></thead><tbody></tbody></table></div>
+      <div class="callout" style="margin-top:12px"><b>Platform dependency:</b> every vault in this plan runs on Morpho and is curated by Sentora. That is one shared dependency for the whole plan (smart contracts, oracles, curator decisions), noted once rather than flagged per vault.</div>
+    </div>
+  </section>
+
+  <!-- APPROVAL -->
+  <section class="tab" id="tab-approval">
+    <div class="grid g3">
+      <div class="card">
+        <div class="row">
+          <div><h2>Allocation Approval Record <span class="tag sim">Generated</span></h2><p class="lead">What approvers sign: amounts, destination contracts, supporting checks with their data source and time, open issues, and conditions before execution.</p></div>
+          <div class="spacer"></div>
+          <button class="btn ghost" id="copyRec">Copy record</button>
+        </div>
+        <pre class="report" id="record"></pre>
+      </div>
+      <div class="card">
+        <h2>Approvals</h2>
+        <p class="lead">Sign-offs are recorded in order. Any change to the plan resets them.</p>
+        <div id="approvals"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Public Morpho vault data with a dated fallback snapshot. The treasury, obligations, policy, and approvals are simulated. Not affiliated with or endorsed by Sentora or Morpho.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= helpers ================= */
+const $ = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => [...el.querySelectorAll(s)];
+const usdM = v => (v==null || !isFinite(v)) ? 'n/a' : (v<0?'-':'') + '$' + (Math.abs(v)/1e6).toFixed(2) + 'M';
+const usd = v => { if(v==null || !isFinite(v)) return 'n/a'; const a = Math.abs(v), s = v<0?'-':''; return a < 1e5 ? s+'$'+Math.round(a).toLocaleString('en-US') : s+'$'+(a/1e6).toFixed(2)+'M'; };
+const pct = (v,d=1) => (v==null || !isFinite(v)) ? 'n/a' : (v*100).toFixed(d) + '%';
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ICON = {good:'&#10003;', warn:'&#9888;', crit:'&#10007;', neutral:'&#8226;', info:'&#8505;'};
+const pill = (c, l) => `<span class="pill ${c}">${ICON[c]||''} ${esc(l)}</span>`;
+const short = a => a ? a.slice(0,6) + '...' + a.slice(-4) : '';
+const TZ = 'America/New_York';
+const NOW = new Date();
+const hhmm = d => d.toLocaleTimeString('en-US',{timeZone:TZ, hour:'numeric', minute:'2-digit'}) + ' ET';
+const dShort = d => d.toLocaleDateString('en-US',{timeZone:TZ, weekday:'short', month:'short', day:'numeric'});
+const ymd = d => d.toLocaleDateString('en-CA',{timeZone:TZ});
+function etNoon(d){ const [y,m,dd] = ymd(d).split('-').map(Number); return new Date(Date.UTC(y, m-1, dd, 16)); }
+const isBiz = d => ![0,6].includes(etNoon(d).getUTCDay());
+function addBiz(d, n){ let t = etNoon(d); let k = n; while(k > 0){ t = new Date(t.getTime() + 86400000); if(isBiz(t)) k--; } return t; }
+
+/* ================= vault data ================= */
+const TS = 'https://tradingstrategy.ai/trading-view/vaults/';
+const SNAP_AT = 'Oct 5, 2026';
+const VAULTS = [
+  {key:'PYUSD', name:'Sentora PYUSD Main', addr:'0xb576765fb15505433af24fee2c0325895c559fb2', ts:TS+'sentora-pyusd-main',
+   snap:{tvl:399.04e6, apy30:.030, fee:0, idle:39.5e6, comp:[['kBTC',154.3e6],['sUSDe',103.6e6],['syrupUSDC',63.5e6],['weETH',32.4e6],['cbBTC',1.8e6],['WBTC',1.4e6],['wstETH',0.1e6]]}},
+  {key:'PRIME', name:'Sentora PRIME Main', addr:'0xc21b08c16458202593d4d9b26b9984ee67b38bbd', ts:TS+'sentora-prime-main',
+   snap:{tvl:221.07e6, apy30:.038, fee:null, idle:8.0e6, comp:[['PRIME',210.1e6]]}},
+  {key:'PST', name:'Sentora PST Main', addr:'0x8381a156958711e230f325428b5eb4b6555c75d9', ts:TS+'sentora-pst-main',
+   snap:{tvl:73.0e6, apy30:.051, apyGross:true, fee:.15, idle:null, comp:null}},
+  {key:'MWIN', name:'Sentora mWIN Main', addr:'0x7cbcfc4f64be199ede6db1d916ddcdb69f666b57', ts:TS+'sentora-mwin-main',
+   snap:{tvl:25.1e6, apy30:.012, apyGross:true, fee:.15, idle:null, comp:null}}
+];
+const V = {}; VAULTS.forEach(v=>V[v.key]=v);
+let SOURCE = 'loading', FETCHED = null, ERR = '', PARTIAL = [];
+const API = 'https://api.morpho.org/graphql';
+async function gql(q){
+  const ctl = new AbortController(); const to = setTimeout(()=>ctl.abort(), 15000);
+  try{ const r = await fetch(API, {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({query:q}), signal:ctl.signal}); const j = await r.json();
+    if(j.errors && j.errors.length && (!j.data || Object.values(j.data).every(x=>x==null))) throw new Error(j.errors[0].message); if(!j.data) throw new Error('HTTP '+r.status); return j.data; }
+  catch(e){ if(e.name==='AbortError') throw new Error('Request timed out'); if(e instanceof TypeError) throw new Error('Network error ('+e.message+')'); throw e; }
+  finally{ clearTimeout(to); }
+}
+const per = body => '{' + VAULTS.map((v,i)=>`v${i}: vaultV2ByAddress(address:"${v.addr}", chainId:1){ ${body} }`).join(' ') + '}';
+const rate = y => { const n = Number(y); return y==null || !isFinite(n) ? null : (Math.abs(n) > 1.5 ? n/100 : n); };
+const fld = (v, p, why) => ({v, p: v==null ? 'na' : p, why});
+async function loadLive(){
+  const t = new Date(); const src = `Morpho API, ${hhmm(t)}`;
+  const d = await gql(per('totalAssetsUsd liquidityUsd idleAssetsUsd asset { symbol }'));
+  VAULTS.forEach((v,i)=>{ const x = d['v'+i]; if(!x) throw new Error('Vault not returned: '+v.name);
+    v.f = {asset:fld(x.asset && x.asset.symbol, 'obs', src), tvl:fld(x.totalAssetsUsd,'obs',src), liq:fld(x.liquidityUsd,'obs',src+' (liquidityUsd)'), idle:fld(x.idleAssetsUsd,'obs',src),
+           apyEx:fld(null), apyTot:fld(null), apy30:fld(null), fee:fld(null), mfee:fld(null), comp:null}; });
+  try{ const a = await gql(per('avgNetApy avgNetApyExcludingRewards')); VAULTS.forEach((v,i)=>{ const r = a['v'+i]||{};
+      v.f.apyEx = fld(rate(r.avgNetApyExcludingRewards),'obs',src+' (avgNetApyExcludingRewards)'); v.f.apyTot = fld(rate(r.avgNetApy),'obs',src+' (avgNetApy)'); }); }
+  catch(e){ PARTIAL.push('APY: '+e.message); }
+  try{ const f = await gql(per('performanceFee')); VAULTS.forEach((v,i)=>{ v.f.fee = fld(rate((f['v'+i]||{}).performanceFee),'obs',src+' (performanceFee)'); }); }
+  catch(e){ PARTIAL.push('Fees: '+e.message); }
+  try{ const f = await gql(per('managementFee')); VAULTS.forEach((v,i)=>{ v.f.mfee = fld(rate((f['v'+i]||{}).managementFee),'obs',src+' (managementFee, annual)'); }); }
+  catch(e){ PARTIAL.push('Management fee: '+e.message); }
+  try{ const a = await gql(per(`adapters(first: 20){ items { assetsUsd ... on MorphoMarketV1Adapter { positions(first: 50){ items { market { collateralAsset { symbol } } state { supplyAssetsUsd } } } } ... on MetaMorphoAdapter { metaMorpho { name } } ... on MorphoVaultV2Adapter { innerVault { name } } } }`));
+    VAULTS.forEach((v,i)=>{ const items = (a['v'+i] && a['v'+i].adapters && a['v'+i].adapters.items) || []; const m = {};
+      items.forEach(ad=>{ if(ad.positions && ad.positions.items) ad.positions.items.forEach(p=>{ const s = p.market && p.market.collateralAsset ? p.market.collateralAsset.symbol : 'Unknown'; m[s] = (m[s]||0) + ((p.state && p.state.supplyAssetsUsd)||0); });
+        else if(ad.assetsUsd){ const n = (ad.metaMorpho && ad.metaMorpho.name) || (ad.innerVault && ad.innerVault.name) || 'Inner vault'; m['Vault: '+n] = (m['Vault: '+n]||0) + ad.assetsUsd; } });
+      v.comp = {rows: Object.entries(m).filter(([,u])=>u > 1000).sort((x,y)=>y[1]-x[1]), p:'obs', why:src+' (adapter positions)'}; }); }
+  catch(e){ PARTIAL.push('Collateral composition: '+e.message); }
+  SOURCE = 'live'; FETCHED = t;
+}
+function loadSnap(){
+  VAULTS.forEach(v=>{ const s = v.snap;
+    v.f = {asset:fld('PYUSD','obs',`Trading Strategy, ${SNAP_AT}`), tvl:fld(s.tvl,'obs',`Trading Strategy, ${SNAP_AT}`), liq:fld(null,'na','Not available in snapshot'),
+      idle:fld(s.idle, 'obs', `Morpho API idle assets, ${SNAP_AT} 7:29 PM ET`), apyEx:fld(null,'na','Not available in snapshot'), apyTot:fld(null,'na','Not available in snapshot'),
+      apy30:fld(s.apy30,'obs',`30d annualized ${s.apyGross?'gross':'net'} return, Trading Strategy, ${SNAP_AT}`), fee:fld(s.fee,'obs',`Trading Strategy, ${SNAP_AT}`), mfee:fld(null,'na','Management fee not in snapshot')};
+    v.comp = s.comp ? {rows:s.comp, p:'obs', why:`Morpho API adapter positions, ${SNAP_AT} 7:29 PM ET`} : null; });
+  SOURCE = 'snapshot'; FETCHED = new Date('2026-10-05T23:29:00Z');
+}
+const F = (v, k, text) => { const f = v.f[k]; if(!f || f.v==null || f.p==='na') return `<span class="na" title="${esc(f?f.why:'Not available')}">n/a</span>`;
+  return f.p==='est' ? `<span class="est" title="Estimated: ${esc(f.why)}">${text}<sup>est</sup></span>` : `<span title="Observed: ${esc(f.why)}">${text}</span>`; };
+const feeP = x => x==null ? 'n/a' : pct(x, Math.abs(x*100 - Math.round(x*100)) > 1e-9 ? 2 : 0);
+const yieldOf = v => v.f.apyEx.v!=null ? v.f.apyEx.v : null;     // only the ex-rewards rate counts toward income
+
+/* ================= treasury and policy (simulated) ================= */
+const OBLIG = [
+  {when: addBiz(NOW, 3), label:'Payroll funding', amt:1.2e6},
+  {when: addBiz(NOW, 8), label:'Vendor settlement', amt:0.8e6}
+];
+const POLICY = {vaultMaxShare:.60, maxOfTvl:.05, maxOfLiq:.20, stressLiqCut:.90, stressCover:.50, collMax:.40, reconTol:.01, yieldFloor:.02, minTvl:20e6, maxFee:.20};
+const T = {bal:6e6, res:1e6};
+const obligTotal = () => OBLIG.reduce((a,o)=>a+o.amt,0);
+const deployable = () => Math.max(0, T.bal - obligTotal() - T.res);
+let ALLOC = {PYUSD:0, PRIME:0, PST:0, MWIN:0};
+let APPROVALS = [], PLAN_REV = 0, EXC = {};
+const APPROVERS = () => { const tot = totalAlloc(); return [
+  {role:'Prepared by', who:'Sentora ops'}, {role:'Risk review', who:'Sentora risk'}, {role:'Approved by', who:'Client treasurer'},
+  ...(tot > 2.5e6 ? [{role:'Approved by (over $2.5M)', who:'Client CFO'}] : [])]; };
+
+/* ================= calculations ================= */
+const totalAlloc = () => Object.values(ALLOC).reduce((a,b)=>a+b,0);
+function eligibility(v){
+  const r = [];
+  r.push({c:'PYUSD on Ethereum', ok: v.f.asset.v ? /PYUSD/i.test(v.f.asset.v) : null});
+  const y = yieldOf(v); r.push({c:'APY excl. rewards ≥ 2.00%', ok: y==null ? null : y >= POLICY.yieldFloor, val:y});
+  r.push({c:'Total assets ≥ $20M', ok: v.f.tvl.v==null ? null : v.f.tvl.v >= POLICY.minTvl});
+  r.push({c:'Performance fee ≤ 20%', ok: v.f.fee.v==null ? null : v.f.fee.v <= POLICY.maxFee});
+  r.push({c:'Withdrawal liquidity observed', ok: v.f.liq.v!=null});
+  const fails = r.filter(x=>x.ok===false), unknown = r.filter(x=>x.ok===null);
+  return {r, ok: !fails.length && !unknown.length, fails, unknown};
+}
+function capFor(v){
+  const D = deployable(); const caps = [{lim:'60% of deployable', v:POLICY.vaultMaxShare*D}];
+  if(v.f.tvl.v!=null) caps.push({lim:'5% of vault assets', v:POLICY.maxOfTvl*v.f.tvl.v});
+  if(v.f.liq.v!=null) caps.push({lim:'20% of vault liquidity', v:POLICY.maxOfLiq*v.f.liq.v});
+  const b = caps.sort((a,b)=>a.v-b.v)[0]; return {cap: eligibility(v).ok ? b.v : 0, lim: eligibility(v).ok ? b.lim : 'Not eligible'};
+}
+function exposures(alloc){
+  // Known collateral + idle + unmapped remainder + unobserved vaults sum to the allocation, unless source positions
+  // exceed the vault's reported assets; that excess is tracked as `over` and must be resolved or excepted.
+  alloc = alloc || ALLOC; const m = {}; let unmapped = 0, unobserved = 0, idle = 0, over = 0; const viaU = [], viaO = [], viaI = [], viaX = [];
+  VAULTS.forEach(v=>{ const a = alloc[v.key]; if(!a) return; const nm = v.name.replace('Sentora ','');
+    if(!v.comp || !v.f.tvl.v){ unobserved += a; viaO.push(nm); return; }
+    let mapped = 0;
+    v.comp.rows.forEach(([sym, usdv])=>{ const e = a * usdv / v.f.tvl.v; mapped += e; (m[sym] = m[sym] || {sym, amt:0, via:[]}).amt += e; m[sym].via.push(nm); });
+    const id = v.f.idle.v!=null ? a * v.f.idle.v / v.f.tvl.v : 0; idle += id; if(id) viaI.push(nm);
+    const rest = a - mapped - id; if(rest > 1){ unmapped += rest; viaU.push(nm); } else if(rest < -1){ over += -rest; viaX.push(nm); }
+  });
+  const rows = Object.values(m).sort((a,b)=>b.amt-a.amt);
+  const total = rows.reduce((x,r)=>x+r.amt,0) + idle + unmapped + unobserved;
+  return {rows, idle, unmapped, unobserved, unknown: unmapped + unobserved, over, total, viaU, viaO, viaI, viaX, top: rows[0] || null};
+}
+function checks(){
+  const tot = totalAlloc(), D = deployable(), L = [];
+  const add = (name, limit, val, ok, detail, hard=true) => L.push({name, limit, val, hard, res: ok===null ? 'unknown' : ok ? 'pass' : hard ? 'fail' : 'warn', detail});
+  const after = T.bal - tot;
+  add('Cash floor', `${usdM(obligTotal())} obligations + ${usdM(T.res)} reserve`, usdM(after), after >= obligTotal() + T.res - 1, after >= obligTotal()+T.res-1 ? `${usdM(after - obligTotal() - T.res)} above the floor` : `Short ${usdM(obligTotal()+T.res-after)}: obligations or reserve would be funded from vault withdrawals`);
+  const inel = VAULTS.filter(v=>ALLOC[v.key] > 0 && !eligibility(v).ok);
+  add('Eligible vaults only', 'Vault criteria met', inel.length ? inel.map(v=>v.name.replace('Sentora ','')).join(', ') : 'All eligible', !inel.length, inel.length ? inel.map(v=>`${v.name.replace('Sentora ','')}: ${[...eligibility(v).fails.map(x=>x.c), ...eligibility(v).unknown.map(x=>x.c+' (unknown)')].join('; ')}`).join('. ') : '');
+  if(tot > 0){
+    const maxV = VAULTS.map(v=>({v, s:ALLOC[v.key]/tot})).sort((a,b)=>b.s-a.s)[0];
+    add('Vault concentration', `≤ ${pct(POLICY.vaultMaxShare,0)} of the plan in one vault`, `${pct(maxV.s)} ${maxV.v.name.replace('Sentora ','')}`, maxV.s <= POLICY.vaultMaxShare + 1e-9, '');
+    const big = VAULTS.filter(v=>ALLOC[v.key] > 0 && v.f.tvl.v && ALLOC[v.key] > POLICY.maxOfTvl*v.f.tvl.v);
+    add('Size versus vault', `≤ ${pct(POLICY.maxOfTvl,0)} of a vault's assets`, big.length ? big.map(v=>`${v.name.replace('Sentora ','')} ${pct(ALLOC[v.key]/v.f.tvl.v)}`).join(', ') : 'Within limit', !big.length, '');
+    const liqUnknown = VAULTS.filter(v=>ALLOC[v.key] > 0 && v.f.liq.v==null);
+    const dep = VAULTS.filter(v=>ALLOC[v.key] > 0 && v.f.liq.v!=null && ALLOC[v.key] > POLICY.maxOfLiq*v.f.liq.v);
+    add('Liquidity dependence', `≤ ${pct(POLICY.maxOfLiq,0)} of a vault's standard withdrawal liquidity`, dep.length ? dep.map(v=>`${v.name.replace('Sentora ','')} ${pct(ALLOC[v.key]/v.f.liq.v)}`).join(', ') : liqUnknown.length ? 'Unknown' : 'Within limit',
+      liqUnknown.length && !dep.length ? null : !dep.length, dep.length ? 'Exit would rely on a large share of what the vault can pay out the same day' : liqUnknown.length ? 'Liquidity not observed for '+liqUnknown.map(v=>v.name.replace('Sentora ','')).join(', ') : '');
+    const stress = VAULTS.reduce((a,v)=>a + (ALLOC[v.key] ? Math.min(ALLOC[v.key], (v.f.liq.v||0)*(1-POLICY.stressLiqCut)) : 0), 0);
+    add('Same-day exit under stress', `If vault liquidity falls ${pct(POLICY.stressLiqCut,0)}, ≥ ${pct(POLICY.stressCover,0)} of the plan still withdrawable`, `${usdM(stress)} (${pct(stress/tot,0)})`, liqUnknown.length ? null : stress >= POLICY.stressCover*tot - 1, `Uses each vault's standard withdrawal liquidity reduced by ${pct(POLICY.stressLiqCut,0)}`);
+    const ex = exposures(); const top = ex.top; const lim = POLICY.collMax*tot;
+    // Pass only if the limit holds even if every unknown dollar sits in the largest collateral type.
+    const cOk = top && top.amt > lim + 1 ? false : ((top ? top.amt : 0) + ex.unknown <= lim + 1 ? true : null);
+    add('Collateral concentration', `≤ ${pct(POLICY.collMax,0)} of the plan against one collateral type`, top ? `${pct(top.amt/tot)} ${top.sym}${ex.unknown?` + up to ${pct(ex.unknown/tot)} unknown`:''}` : (ex.unknown ? `${pct(ex.unknown/tot)} unknown` : 'n/a'), cOk,
+      ex.unknown ? `${usdM(ex.unknown)} of the plan has unverified composition${cOk===null?'; the limit cannot be proven':''}` : '');
+    const recOk = ex.over <= POLICY.reconTol*tot;
+    add('Exposure reconciliation', `Look-through exposure within ${pct(POLICY.reconTol,0)} of the allocation`, `${pct(ex.total/tot)} of allocation`, recOk ? true : null,
+      ex.over > 1 ? `Source positions exceed reported vault assets by ${usdM(ex.over)} (${ex.viaX.join(', ')})${recOk?'; within tolerance':'; resolve the data or record an exception'}` : '');
+    const inc = VAULTS.reduce((a,v)=>a + ALLOC[v.key]*(yieldOf(v)||0), 0);
+    add('Blended yield', `APY excl. rewards ≥ ${pct(POLICY.yieldFloor,2)}`, pct(inc/tot,2), VAULTS.some(v=>ALLOC[v.key] && yieldOf(v)==null) ? null : inc/tot >= POLICY.yieldFloor, 'Soft limit: warns only', false);
+    add('Deployment size', `≤ deployable ${usdM(D)}`, usdM(tot), tot <= D + 1, tot < 0.5*D ? `${usdM(D - tot)} left undeployed` : '', true);
+  } else add('Allocation entered', 'At least one vault', '$0.00M', false, 'Enter amounts or use a preset');
+  return L;
+}
+function suggest(){
+  // Search complete combinations on a grid (at most ~30 steps of deployable cash), so vaults that only pass together are found.
+  // A fast screen applies the plan-level limits; the best candidates are then confirmed with the same checks approvers see.
+  const zero = {PYUSD:0, PRIME:0, PST:0, MWIN:0}; const D = deployable();
+  const el = VAULTS.filter(v=>eligibility(v).ok && v.comp && v.f.tvl.v && capFor(v).cap >= 1e4);
+  if(!el.length || D < 1e5) return {a:zero, found:false, why: el.length ? 'too little deployable cash' : 'no vault currently meets the vault criteria'};
+  const u = Math.max(1e5, Math.ceil(D/30/1e5)*1e5);
+  const S = [...new Set(el.flatMap(v=>v.comp.rows.map(r=>r[0])))];
+  const P = el.map(v=>{ const tv = v.f.tvl.v; const sh = S.map(x=>{ const r = v.comp.rows.find(y=>y[0]===x); return r ? r[1]/tv : 0; });
+    const idl = v.f.idle.v!=null ? v.f.idle.v/tv : 0; const mapped = sh.reduce((x,y)=>x+y,0);
+    return {v, sh, unk: Math.max(0, 1-mapped-idl), over: Math.max(0, mapped+idl-1), y: yieldOf(v)||0, maxK: Math.floor((capFor(v).cap+1)/u), sl: (v.f.liq.v||0)*(1-POLICY.stressLiqCut)}; });
+  const cands = []; const k = new Array(P.length).fill(0); const maxSteps = Math.floor((D+1)/u);
+  (function rec(i, used){
+    if(i === P.length){ if(!used) return; const amts = k.map(x=>x*u); const tot = used*u;
+      if(Math.max(...amts) > POLICY.vaultMaxShare*tot + 1) return;
+      let unk = 0, over = 0, stress = 0, inc = 0; const coll = new Array(S.length).fill(0);
+      P.forEach((p,j)=>{ const a = amts[j]; if(!a) return; p.sh.forEach((x,t)=>coll[t] += a*x); unk += a*p.unk; over += a*p.over; stress += Math.min(a, p.sl); inc += a*p.y; });
+      if(Math.max(...coll) + unk > POLICY.collMax*tot + 1) return;
+      if(over > POLICY.reconTol*tot) return;
+      if(stress < POLICY.stressCover*tot - 1) return;
+      cands.push({amts, inc, tot}); return; }
+    for(let x=0; x<=Math.min(P[i].maxK, maxSteps-used); x++){ k[i] = x; rec(i+1, used+x); } k[i] = 0;
+  })(0, 0);
+  cands.sort((a,b)=>b.inc-a.inc || b.tot-a.tot);
+  const save = ALLOC;
+  for(const c of cands.slice(0, 50)){ const a = {...zero}; P.forEach((p,j)=>a[p.v.key] = c.amts[j]);
+    ALLOC = a; const res = checks(); ALLOC = save;
+    if(!res.some(x=>x.hard && (x.res==='fail' || x.res==='unknown'))) return {a, found:true, step:u}; }
+  return {a:zero, found:false, why:'no combination passes every policy check'};
+}
+/* ================= render ================= */
+function render(){
+  const D = deployable(), tot = totalAlloc(), ch = checks(); const fails = ch.filter(c=>c.res==='fail'), warns = ch.filter(c=>c.res==='warn'), unk = ch.filter(c=>c.res==='unknown');
+  const inc = VAULTS.reduce((a,v)=>a + ALLOC[v.key]*(yieldOf(v)||0), 0);
+  const incR = VAULTS.reduce((a,v)=>a + ALLOC[v.key]*Math.max(0,(v.f.apyTot.v||0)-(yieldOf(v)||0)), 0);
+  const stress = VAULTS.reduce((a,v)=>a + (ALLOC[v.key] ? Math.min(ALLOC[v.key], (v.f.liq.v||0)*(1-POLICY.stressLiqCut)) : 0), 0);
+  // source
+  $('#srcBox').innerHTML = SOURCE==='live' ? `Vault data <b>Observed, Morpho API</b><br>Pulled ${hhmm(FETCHED)} · ${dShort(FETCHED)}${PARTIAL.length?`<br><span class="warnline" title="${esc(PARTIAL.join(' | '))}">${PARTIAL.length} optional data set${PARTIAL.length>1?'s':''} unavailable (hover)</span>`:''}`
+    : `Vault data <b>Snapshot, ${SNAP_AT}</b><br><span class="warnline">Morpho API error: ${esc(ERR)}</span>`;
+  ['vTag','cTag','eTag'].forEach(id=>{ const t = $('#'+id); t.className = 'tag ' + (SOURCE==='live'?'live':'snap'); t.textContent = SOURCE==='live' ? (id==='eTag'?'Observed composition':'Observed') : 'Snapshot + estimates'; });
+  // cards
+  const st = fails.length ? ['crit','Fails policy'] : (warns.length||unk.length) ? ['warn','Review'] : tot ? ['good','Passes'] : ['neutral','Empty'];
+  const cards = [
+    ['Deployable Cash', usdM(D), `${usdM(T.bal)} balance − ${usdM(obligTotal())} obligations − ${usdM(T.res)} reserve`, 'info'],
+    ['Proposed Allocation', usdM(tot), D ? `${pct(tot/D,0)} of deployable · ${usdM(Math.max(0,D-tot))} undeployed` : 'nothing deployable', tot > D ? 'crit' : 'info'],
+    ['Indicative Income', usd(inc), `per year at APY excl. rewards${incR?` · incentives ${usd(incR)} not counted`:''}`, 'info'],
+    ['Stressed Exit', tot ? pct(stress/tot,0) : 'n/a', `of plan withdrawable same day if vault liquidity falls ${pct(POLICY.stressLiqCut,0)}`, tot && stress >= POLICY.stressCover*tot ? 'good' : tot ? 'warn' : 'neutral'],
+    ['Policy Checks', st[1], `${ch.filter(c=>c.res==='pass').length} pass · ${warns.length} warn · ${fails.length} fail · ${unk.length} unknown`, st[0]]
+  ];
+  $('#cards').innerHTML = cards.map(([l,v,s,c])=>`<div class="q" data-go="${l==='Policy Checks'?'alloc':l==='Deployable Cash'?'overview':'alloc'}"><span class="l">${l}</span><span class="v">${esc(v)} ${c!=='info'&&c!=='neutral'?pill(c, c==='good'?'OK':c==='crit'?'Act':'Watch'):''}</span><span class="s">${esc(s)}</span></div>`).join('');
+  $('#cFail').textContent = fails.length;
+  // treasury
+  $('#treasTbl tbody').innerHTML = `<tr><td>PYUSD balance</td><td class="note">Simulated client wallet balance</td><td class="n"><b>${usdM(T.bal)}</b></td></tr>`
+    + OBLIG.map(o=>`<tr><td>${esc(o.label)}</td><td class="note">due ${dShort(o.when)}</td><td class="n">−${usdM(o.amt)}</td></tr>`).join('')
+    + `<tr><td>Cash reserve</td><td class="note">held for unplanned needs</td><td class="n">−${usdM(T.res)}</td></tr><tr class="total"><td>Deployable</td><td></td><td class="n">${usdM(D)}</td></tr>`
+    + `<tr><td>Proposed allocation</td><td></td><td class="n">−${usdM(tot)}</td></tr><tr class="total"><td>Wallet after allocation</td><td class="note">must cover obligations and reserve</td><td class="n">${usdM(T.bal - tot)} ${T.bal - tot >= obligTotal()+T.res-1 ? pill('good','Covered') : pill('crit','Short')}</td></tr>`;
+  // plan summary
+  $('#planTbl tbody').innerHTML = VAULTS.filter(v=>ALLOC[v.key]>0).map(v=>`<tr><td>${esc(v.name)}</td><td class="n">${usdM(ALLOC[v.key])}</td><td class="n">${pct(ALLOC[v.key]/tot)}</td><td class="n">${F(v,'apyEx',pct(yieldOf(v),2))}</td><td class="n">${usd(ALLOC[v.key]*(yieldOf(v)||0))}</td></tr>`).join('')
+    || `<tr><td colspan="5" class="note">No allocation yet. Use the Allocation tab or a preset.</td></tr>`;
+  $('#planStatus').innerHTML = `<div class="callout ${fails.length?'crit':warns.length||unk.length?'':'good'}" style="margin-top:10px">${fails.length ? `<b>Fails policy:</b> ${fails.map(f=>esc(f.name)).join(', ')}.` : warns.length||unk.length ? `<b>Needs review:</b> ${[...warns,...unk].map(f=>esc(f.name)).join(', ')}.` : tot ? '<b>Passes all policy checks.</b> Ready for the approval record.' : 'Enter an allocation to run the checks.'}</div>`;
+  // vaults
+  const showE = SOURCE==='live'; const cols = [['Vault',''],['Total<br>assets','n'],['Standard<br>liquidity','n'],['Idle','n'],[showE?'APY excl.<br>rewards':'30d annualized<br>return','n'],[showE?'APY incl.<br>rewards':'','n'],['Fees<br>mgmt / perf','n'],['Largest<br>collateral','n'],['Eligibility','']].filter(c=>c[0]);
+  $('#vTbl thead').innerHTML = '<tr>' + cols.map(c=>`<th class="${c[1]}">${c[0]}</th>`).join('') + '</tr>';
+  $('#vTbl tbody').innerHTML = VAULTS.map(v=>{ const e = eligibility(v); const top = v.comp && v.comp.rows[0]; const topTxt = top ? `${pct(top[1]/v.f.tvl.v,0)} ${top[0]}` : 'n/a';
+    return `<tr><td>${esc(v.name)}<br><a class="note" href="https://etherscan.io/address/${v.addr}" target="_blank" rel="noopener">${short(v.addr)}</a> · <a class="note" href="${v.ts}" target="_blank" rel="noopener">Trading Strategy</a></td><td class="n">${F(v,'tvl',usdM(v.f.tvl.v))}</td><td class="n">${F(v,'liq',usdM(v.f.liq.v))}</td><td class="n">${F(v,'idle',usdM(v.f.idle.v))}</td>`
+      + (showE ? `<td class="n">${F(v,'apyEx',pct(v.f.apyEx.v,2))}</td><td class="n">${F(v,'apyTot',pct(v.f.apyTot.v,2))}</td>` : `<td class="n">${F(v,'apy30',pct(v.f.apy30.v,2))}</td>`)
+      + `<td class="n">${F(v,'mfee',feeP(v.f.mfee.v))} / ${F(v,'fee',feeP(v.f.fee.v))}</td><td class="n">${topTxt}</td><td>${e.ok?pill('good','Eligible'):e.fails.length?pill('crit','Not eligible'):pill('warn','Needs data')}<br><span class="note">${esc([...e.fails.map(x=>x.c), ...e.unknown.map(x=>x.c+': unknown')].join('; '))}</span></td></tr>`; }).join('');
+  $('#collBars').innerHTML = VAULTS.map(v=>{ if(!v.comp) return `<div class="cb"><b>${esc(v.name)}</b> <span class="note">composition not available ${SOURCE==='live'?'':'in snapshot'}</span></div>`;
+    const rows = v.comp.rows; const tvl = v.f.tvl.v; const colors = ['#1B2A41','#3E5577','#7C8FAD','#A0712B','#C9A46A','#D9CDB8','#B9C3D1'];
+    const big = rows.filter(r=>r[1]/tvl >= .02), small = rows.filter(r=>r[1]/tvl < .02); const sm = small.reduce((a,r)=>a+r[1],0);
+    const segs = [...big, ...(sm?[['Other', sm]]:[]), ...(v.f.idle.v?[['Idle', v.f.idle.v]]:[])];
+    return `<div class="cb"><div class="row"><b>${esc(v.name)}</b><span class="spacer"></span><span class="note">${usdM(tvl)}</span></div><div class="stack">${segs.map((s,i)=>`<div style="width:${(s[1]/tvl*100).toFixed(2)}%;background:${s[0]==='Idle'?'#E2DACB':colors[i%colors.length]}" title="${esc(s[0])}: ${usdM(s[1])} (${pct(s[1]/tvl)})"></div>`).join('')}</div><div class="legend">${segs.map((s,i)=>`<span><i style="background:${s[0]==='Idle'?'#E2DACB':colors[i%colors.length]}"></i>${esc(s[0])} ${s[1]/tvl < .01 ? '<1%' : pct(s[1]/tvl,0)}</span>`).join('')}</div></div>`; }).join('');
+  // allocation builder (rebuild inputs only when vault set changes; keep focus otherwise)
+  if(!$('#allocTbl tbody').children.length){
+    $('#allocTbl tbody').innerHTML = VAULTS.map(v=>`<tr data-v="${v.key}"><td>${esc(v.name)}</td><td class="n"><input type="number" class="amt" data-k="${v.key}" min="0" step="0.01" value="0" style="width:90px;text-align:right"></td><td class="n cap"></td><td class="n apy"></td><td class="n inc"></td><td class="lim"></td></tr>`).join('')
+      + `<tr class="total"><td>Total</td><td class="n" id="aTot"></td><td class="n" id="aDep"></td><td class="n" id="aApy"></td><td class="n" id="aInc"></td><td></td></tr>`;
+  }
+  VAULTS.forEach(v=>{ const tr = $(`#allocTbl tr[data-v="${v.key}"]`); const c = capFor(v); const inp = $('.amt', tr);
+    if(document.activeElement !== inp) inp.value = (ALLOC[v.key]/1e6).toFixed(2);
+    inp.disabled = !eligibility(v).ok && ALLOC[v.key]===0 ? false : false;
+    $('.cap', tr).innerHTML = c.cap ? usdM(c.cap) : '<span class="na">0</span>'; $('.apy', tr).innerHTML = F(v,'apyEx',pct(yieldOf(v),2)); $('.inc', tr).textContent = usd(ALLOC[v.key]*(yieldOf(v)||0));
+    $('.lim', tr).innerHTML = c.lim==='Not eligible' ? pill('neutral','Not eligible') : ALLOC[v.key] > c.cap + 1 ? pill('crit','Over: '+c.lim) : esc(c.lim); });
+  $('#aTot').textContent = usdM(tot); $('#aDep').textContent = ''; $('#aApy').textContent = tot ? pct(inc/tot,2) : ''; $('#aInc').textContent = usd(inc);
+  $('#sumTbl tbody').innerHTML = [['Deployable', usdM(D)], ['Allocated', usdM(tot)], ['Undeployed cash', usdM(Math.max(0, D - tot))], ['Wallet after allocation', usdM(T.bal - tot)], ['Blended APY excl. rewards', tot ? pct(inc/tot,2) : 'n/a'], ['Indicative annual income', usd(inc)], ['Incentives (not counted)', usd(incR)], ['Same-day exit under stress', tot ? `${usdM(stress)} (${pct(stress/tot,0)})` : 'n/a']]
+    .map(r=>`<tr><td>${r[0]}</td><td class="n"><b>${r[1]}</b></td></tr>`).join('');
+  $('#chkTbl tbody').innerHTML = ch.map(c=>`<tr><td>${esc(c.name)}</td><td class="note">${esc(c.limit)}</td><td class="n">${esc(c.val)}</td><td>${c.res==='pass'?pill('good','Pass'):c.res==='fail'?pill('crit','Fail'):c.res==='warn'?pill('warn','Warn'):pill('neutral','Unknown')}</td><td class="note">${esc(c.detail)}</td></tr>`).join('');
+  // exposure
+  const ex = exposures();
+  const worst = (ex.top ? ex.top.amt : 0) + ex.unknown;
+  $('#expTbl tbody').innerHTML = tot ? ex.rows.map(r=>{ const sh = r.amt/tot; const shared = new Set(r.via).size > 1;
+      const res = sh > POLICY.collMax ? pill('crit','Over 40% limit') : (r===ex.top && worst > POLICY.collMax*tot + 1) ? pill('warn','Unproven: unknown could push it over') : shared ? pill('info','Shared across vaults') : pill('good','Within limit');
+      return `<tr><td>${esc(r.sym)}</td><td class="n">${usdM(r.amt)}</td><td class="n">${pct(sh)}</td><td>${esc([...new Set(r.via)].join(', '))}</td><td>${res}</td></tr>`; }).join('')
+      + (ex.idle ? `<tr><td>Idle (unallocated in vault)</td><td class="n">${usdM(ex.idle)}</td><td class="n">${pct(ex.idle/tot)}</td><td>${esc(ex.viaI.join(', '))}</td><td>${pill('neutral','Not lent')}</td></tr>` : '')
+      + (ex.unmapped ? `<tr><td>Unmapped remainder</td><td class="n">${usdM(ex.unmapped)}</td><td class="n">${pct(ex.unmapped/tot)}</td><td>${esc(ex.viaU.join(', '))}</td><td>${pill('warn','Unknown')} <span class="note">vault assets not matched to an adapter position</span></td></tr>` : '')
+      + (ex.unobserved ? `<tr><td>Composition not observed</td><td class="n">${usdM(ex.unobserved)}</td><td class="n">${pct(ex.unobserved/tot)}</td><td>${esc(ex.viaO.join(', '))}</td><td>${pill('warn','Unknown')}</td></tr>` : '')
+      + `<tr class="total"><td>Total</td><td class="n">${usdM(ex.total)}</td><td class="n">${pct(ex.total/tot)}</td><td class="note">allocation ${usdM(tot)}</td><td>${ex.over <= 1 ? pill('good','Reconciles') : ex.over <= POLICY.reconTol*tot ? pill('info','Within tolerance') : pill('crit','Does not reconcile')}${ex.over > 1 ? ` <span class="note">positions exceed reported assets by ${usdM(ex.over)} (${esc(ex.viaX.join(', '))})</span>` : ''}</td></tr>`
+    : `<tr><td colspan="5" class="note">No allocation yet.</td></tr>`;
+  // approval record
+  renderRecord(ch, fails, warns, unk, inc, incR, stress);
+}
+function renderRecord(ch, fails, warns, unk, inc, incR, stress){
+  const tot = totalAlloc(), D = deployable(); const L = [];
+  const hardUnk = unk.filter(c=>c.hard); const openUnk = hardUnk.filter(c=>!EXC[c.name]); const blocked = fails.length || openUnk.length || !tot;
+  const appr = APPROVERS(); const done = APPROVALS.length;
+  const excUsed = hardUnk.filter(c=>EXC[c.name]);
+  const withC = excUsed.length ? ' WITH CONDITIONS' : '';
+  const status = fails.length ? 'DRAFT: fails policy, cannot be submitted' : openUnk.length ? 'DRAFT: unverified mandatory checks, needs data or a documented exception'
+    : done >= appr.length ? `APPROVED${withC}` + (withC ? ` (resolve ${excUsed.length} recorded exception${excUsed.length>1?'s':''} before any deposit)` : '')
+    : done ? `IN REVIEW${withC} (${done}/${appr.length} sign-offs)` : `READY FOR APPROVAL${withC}`;
+  L.push(`ALLOCATION APPROVAL RECORD  |  Plan revision ${PLAN_REV}  |  ${dShort(NOW)}, ${hhmm(new Date())}`);
+  L.push(`Status: ${status}`);
+  L.push('');
+  L.push('1. CASH POSITION');
+  L.push(`   PYUSD balance ${usdM(T.bal)}; obligations ${OBLIG.map(o=>`${o.label} ${usdM(o.amt)} (${dShort(o.when)})`).join(', ')}; reserve ${usdM(T.res)}.`);
+  L.push(`   Deployable ${usdM(D)}. Proposed ${usdM(tot)}. Wallet after allocation ${usdM(T.bal - tot)}.`);
+  L.push('');
+  L.push('2. ALLOCATIONS AND DESTINATIONS (Ethereum mainnet, PYUSD)');
+  VAULTS.filter(v=>ALLOC[v.key]>0).forEach(v=>L.push(`   ${v.name.padEnd(22)} ${usdM(ALLOC[v.key]).padStart(9)}   contract ${v.addr}`));
+  if(!tot) L.push('   None.');
+  L.push(`   Indicative income ${usd(inc)} per year at APY excl. rewards (${tot?pct(inc/tot,2):'n/a'}); incentives of ${usd(incR)} excluded.`);
+  L.push('');
+  L.push(`3. SUPPORTING CHECKS  (vault data: ${SOURCE==='live'?'Morpho API, observed '+hhmm(FETCHED):'snapshot '+SNAP_AT+', partly unavailable'})`);
+  ch.forEach(c=>L.push(`   [${c.res.toUpperCase().padEnd(7)}] ${c.name}: ${c.val} (limit: ${c.limit})${c.detail?'. '+c.detail:''}`));
+  L.push('');
+  L.push('4. OPEN ISSUES');
+  const issues = [...fails, ...warns, ...unk].map(c=>`${c.name}: ${c.detail || c.val}${EXC[c.name]?` [EXCEPTION recorded by ${EXC[c.name].by} ${hhmm(EXC[c.name].at)}: ${EXC[c.name].note}]`:''}`);
+  (issues.length ? issues : ['None.']).forEach(i=>L.push(`   - ${i}`));
+  L.push('');
+  L.push('5. CONDITIONS BEFORE EXECUTION');
+  const funded = VAULTS.filter(v=>ALLOC[v.key]>0); const TEST = 1e4;
+  [...(excUsed.length ? [`Resolve recorded exceptions before any deposit (${excUsed.map(c=>c.name).join(', ')})`] : []),
+   'Verify each destination contract address out of band against Etherscan and the Morpho app',
+   'Confirm each destination is on the client\'s Fireblocks allowlist',
+   'Token approvals: Sentora ops prepares one per vault, the client signs it, and ops confirms it on-chain and verifies the allowance before any deposit',
+   'Re-run liquidity and policy checks on the day of execution; stop if any mandatory check fails or cannot be verified',
+   `Gas: confirm the client's Fireblocks signing account holds enough ETH for ${funded.length} token approval${funded.length===1?'':'s'} and up to ${funded.length*2} deposits, with a buffer for gas spikes`,
+   'Deposit capacity: on the day, confirm each vault can accept its approved amount using the Morpho SDK capacity calculation or a simulated deposit transaction. Vault V2\'s ERC-4626 maxDeposit() returns zero, so it cannot be used for this',
+   'Test deposit per vault, prepared by Sentora ops and signed by the client; confirm shares match the deposit preview. The test counts toward the approved amount and never exceeds it' + (funded.length ? ': ' + funded.map(v=>{ const t = Math.min(TEST, ALLOC[v.key]); return `${v.name.replace('Sentora ','')} test ${usd(t)}${ALLOC[v.key]-t > 0 ? `, then ${usd(ALLOC[v.key]-t)}` : ' (full amount)'}`; }).join('; ') : ''),
+   'Book each deposit to the position record and reconcile shares on-chain the same day'].forEach(c=>L.push(`   - ${c}`));
+  L.push('');
+  L.push('6. APPROVALS');
+  appr.forEach((a,i)=>L.push(`   ${a.role.padEnd(26)} ${a.who.padEnd(20)} ${APPROVALS[i] ? 'Signed '+hhmm(APPROVALS[i]) : '_______________'}`));
+  $('#record').textContent = L.join('\n');
+  $('#approvals').innerHTML = appr.map((a,i)=>{ const signed = APPROVALS[i]; const next = i===done;
+    return `<div class="ap"><div><b>${esc(a.who)}</b><br><span class="note">${esc(a.role)}</span></div><div>${signed ? pill('good','Signed '+hhmm(signed)) : next ? `<button class="btn sm" data-sign="${i}" ${blocked?'disabled':''}>Record sign-off</button>` : pill('neutral','Waiting')}</div></div>`; }).join('')
+    + (fails.length ? `<div class="callout crit" style="margin-top:10px">The plan fails policy and cannot be submitted. Fix: ${fails.map(f=>esc(f.name)).join(', ')}.</div>`
+      : openUnk.length ? `<div class="callout crit" style="margin-top:10px">Mandatory checks cannot be verified on current data: ${openUnk.map(c=>esc(c.name)).join(', ')}. Get the data, or have Sentora risk record a documented exception.</div>` + openUnk.map(c=>`<div class="ap"><div><b>${esc(c.name)}</b><br><span class="note">${esc(c.detail||c.val)}</span></div><div><button class="btn ghost sm" data-exc="${esc(c.name)}">Record exception (Sentora risk)</button></div></div>`).join('')
+      : excUsed.length && done >= appr.length ? `<div class="callout" style="margin-top:10px"><b>Approved with conditions.</b> Resolve recorded exceptions before any deposit: ${excUsed.map(c=>esc(c.name)).join(', ')}.</div>`
+      : (warns.length||hardUnk.length) && !done ? `<div class="callout" style="margin-top:10px">Warnings${hardUnk.length?' and recorded exceptions':''} are listed as open issues; approvers sign with them visible.</div>` : '');
+}
+
+/* ================= wiring ================= */
+function planChanged(note){ EXC = {}; if(APPROVALS.length){ APPROVALS = []; $('#presetNote').textContent = (note?note+' ':'') + 'Plan changed after sign-offs; approvals reset.'; } else if(note) $('#presetNote').textContent = note; PLAN_REV++; render(); }
+function showTab(name){ $$('nav.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===name)); $$('section.tab').forEach(s=>s.classList.toggle('on', s.id==='tab-'+name)); window.scrollTo({top: $('nav.tabs').offsetTop - 10, behavior:'smooth'}); }
+$$('nav.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+document.addEventListener('click', e=>{
+  const g = e.target.closest('[data-go]'); if(g){ showTab(g.dataset.go); return; }
+  const p = e.target.closest('[data-preset]'); if(p){ const k = p.dataset.preset;
+    if(k==='clear'){ ALLOC = {PYUSD:0, PRIME:0, PST:0, MWIN:0}; planChanged('Cleared.'); }
+    if(k==='apy'){ const el = VAULTS.filter(v=>v.f.tvl.v).sort((a,b)=>((yieldOf(b)!=null?yieldOf(b):(b.f.apy30&&b.f.apy30.v)||0)-((yieldOf(a)!=null?yieldOf(a):(a.f.apy30&&a.f.apy30.v)||0))))[0];
+      ALLOC = {PYUSD:0, PRIME:0, PST:0, MWIN:0}; ALLOC[el.key] = Math.floor(deployable()/1e5)*1e5; planChanged(`Highest APY: all ${usdM(deployable())} into ${el.name}. See which checks it fails.`); }
+    if(k==='suggest'){ const sg = suggest();
+      if(!sg.found){ $('#presetNote').textContent = `No suggested allocation found (${sg.why}). Try a manual allocation. The current allocation is unchanged.`; return; }
+      ALLOC = sg.a; const tot = totalAlloc(); planChanged(`Suggested plan: the highest-income combination, searched in ${usd(sg.step)} steps, that passes every hard policy check${tot < deployable()-1 ? `; ${usdM(deployable()-tot)} remains unallocated in this suggested plan` : ''}.`); }
+    return; }
+  const s = e.target.closest('[data-sign]'); if(s){ APPROVALS.push(new Date()); render(); return; }
+  const x = e.target.closest('[data-exc]'); if(x){ EXC[x.dataset.exc] = {by:'Sentora risk', at:new Date(), note:'Accepted with the unknown amount disclosed; to be verified before execution'}; render(); return; }
+});
+document.addEventListener('input', e=>{
+  if(e.target.matches('.amt')){ const v = parseFloat(e.target.value); ALLOC[e.target.dataset.k] = isFinite(v) && v > 0 ? Math.round(v*100)*1e4 : 0; planChanged(''); }
+  if(e.target.id==='inStress'){ const v = parseFloat(e.target.value); POLICY.stressLiqCut = isFinite(v) ? Math.min(100, Math.max(0, v))/100 : .9; planChanged('Stress scenario changed; checks re-run.'); }
+  if(e.target.id==='inBal'){ const v = parseFloat(e.target.value); T.bal = isFinite(v) && v >= 0 ? v*1e6 : 0; planChanged(''); }
+  if(e.target.id==='inRes'){ const v = parseFloat(e.target.value); T.res = isFinite(v) && v >= 0 ? v*1e6 : 0; planChanged(''); }
+});
+// show the stored ($10,000-step) amount once the field loses focus
+document.addEventListener('change', e=>{ if(e.target.matches('.amt')) render(); });
+$('#copyRec').onclick = async ()=>{ try{ await navigator.clipboard.writeText($('#record').textContent); $('#copyRec').textContent='Copied'; setTimeout(()=>$('#copyRec').textContent='Copy record',1500);}catch(e){ $('#copyRec').textContent='Select and copy manually'; } };
+
+(async function boot(){
+  try{ await loadLive(); } catch(e){ ERR = e.message; loadSnap(); console.warn('Vault data unavailable:', e.message); }
+  const sg = suggest(); ALLOC = sg.a; PLAN_REV = 1; if(!sg.found) $('#presetNote').textContent = `No suggested allocation found (${sg.why}). Try a manual allocation.`; render();
+})();
+})();
+</script>
+</body>
+</html>
