@@ -11,8 +11,8 @@
 </script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PRIME Collateral & Financing Monitor | Justin Thom</title>
-<meta name="description" content="A simulated financing position against PRIME (Figure HELOC-backed token) on Morpho: margin, carry, stress actions, reconciliation, and exit planning.">
+<title>PRIME Market Operations Monitor | Justin Thom</title>
+<meta name="description" content="Operations oversight of Sentora's PRIME Main vault on Morpho: allocations, withdrawal liquidity, borrower concentration and stress, data checks, and an approval-based action tracker, plus a borrower financing case study.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -203,6 +203,34 @@ tr.cur td{font-weight:600}
 #posTbl td.note{font-size:12px}
 .q .v{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 @media (max-width:640px){.slider{grid-template-columns:1fr 60px}.slider label{grid-column:1/-1}}
+
+.qgrid.q3{grid-template-columns:repeat(3,1fr)}
+.scenbar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:12px;padding:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:8px;font-size:13px}
+.scenbar.on{border-color:var(--bronze);background:#F8F1E4}
+.scenbar .lbl{font-weight:600;display:flex;gap:8px;align-items:center}
+label.f.inl{flex-direction:row;align-items:center;gap:8px;font-size:13px;color:var(--ink2)}
+label.ck.inl{margin:0}
+td.nw{white-space:nowrap}
+details.log{margin-top:6px;font-size:12px}
+details.log summary{cursor:pointer;color:var(--muted)}
+details.log ul{list-style:none;margin:6px 0 0;padding:0}
+details.log li{margin:3px 0;color:var(--ink2)}
+details.log .t{font-family:var(--mono);font-size:11px;color:var(--muted);margin-right:6px}
+#actTbl td{vertical-align:top}
+#actTbl td.amt{min-width:120px}
+#actTbl .btn{margin:0 4px 4px 0}
+.kv.wide{grid-template-columns:150px 1fr 150px 1fr}
+.changes li span:nth-child(2){flex:1}
+@media (max-width:1050px){ .qgrid.q3{grid-template-columns:repeat(2,1fr)} .kv.wide{grid-template-columns:130px 1fr} }
+@media (max-width:640px){ .qgrid.q3{grid-template-columns:1fr} }
+.qgrid.q4{grid-template-columns:repeat(4,1fr);margin-bottom:6px}
+.q.nolink{cursor:default}
+.q.nolink:hover{border-color:var(--line)}
+h3.sub{font-size:13px;margin:10px 0 4px;color:var(--ink2)}
+.changes.resp li{align-items:flex-start}
+.changes.resp li .pill{flex:none;min-width:118px;justify-content:center}
+@media (max-width:1050px){ .qgrid.q4{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:640px){ .qgrid.q4{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -218,14 +246,14 @@ tr.cur td{font-weight:600}
 <main class="wrap">
   <div class="intro">
     <div>
-      <h1>PRIME Collateral &amp; Financing Monitor</h1>
-      <p>A simulated financing position supporting a Sentora operations workflow: an institutional client borrows PYUSD on Morpho against PRIME, a token backed by Figure home equity (HELOC) loans.</p>
+      <h1>PRIME Market Operations Monitor</h1>
+      <p>A simulated operations workflow for Sentora's PRIME Main vault on Morpho, which lends PYUSD against PRIME, a token backed by Figure home equity (HELOC) loans.</p>
       <ul class="roles">
-        <li><b>Starting position:</b> $10M of PRIME collateral and $6M of PYUSD debt.</li>
-        <li><b>Operations:</b> watches margin, carry, stress actions, records, and the exit path.</li>
-        <li><b>Market data:</b> Morpho public API and CoinGecko; PRIME structure from Sentora's published asset review.</li>
+        <li><b>Vault and market:</b> allocations, withdrawal liquidity, utilization, and borrower positions from Morpho's public API.</li>
+        <li><b>Operations:</b> tracks exposure and liquidity, runs data checks, and coordinates responses through risk approval, execution, and verification.</li>
+        <li><b>Case study:</b> one simulated borrower position, monitored and unwound the way a repo desk manages a financed MBS position.</li>
       </ul>
-      <p class="note">The client, its position, mandate limits, records, and actions are simulated. Values are labeled observed, estimated, or simulated.</p>
+      <p class="note">Watch levels, stress scenarios, actions, approvals, and the case-study position are simulated. Values are labeled observed, estimated, or simulated.</p>
     </div>
     <div class="src" id="srcBox">Market data <b>loading...</b></div>
   </div>
@@ -233,26 +261,38 @@ tr.cur td{font-weight:600}
 
   <nav class="tabs">
     <button class="on" data-tab="overview">Overview</button>
-    <button data-tab="risk">Margin &amp; Stress</button>
-    <button data-tab="carry">Financing</button>
-    <button data-tab="actions">Action Queue<span class="count" id="cAct">0</span></button>
-    <button data-tab="recon">Reconciliation<span class="count" id="cRec">0</span></button>
-    <button data-tab="exit">Exit Plan</button>
+    <button data-tab="vault">Vault &amp; Liquidity</button>
+    <button data-tab="borrowers">Borrowers &amp; Stress</button>
+    <button data-tab="checks">Data Checks<span class="count" id="cChk">0</span></button>
+    <button data-tab="actions">Action Tracker<span class="count" id="cAct">0</span></button>
+    <button data-tab="case">Case Study</button>
   </nav>
 
-  <div class="callout scen" id="scenBanner" style="display:none"></div>
+  <div class="scenbar" id="scenBar">
+    <span class="lbl">Market scenario <span class="tag sim">Simulated</span></span>
+    <label class="f inl">PRIME price
+      <select id="scShock">
+        <option value="0">Live price</option>
+        <option value="0.05">Down 5%</option>
+        <option value="0.10">Down 10%</option>
+        <option value="0.20">Down 20%</option>
+      </select>
+    </label>
+    <label class="ck inl"><input type="checkbox" id="scDrain"> Lenders withdraw: market liquidity falls to zero (100% utilization)</label>
+    <span class="note" id="scNote"></span>
+  </div>
 
   <!-- OVERVIEW -->
   <section class="tab on" id="tab-overview">
-    <div class="qgrid" id="cards"></div>
+    <div class="qgrid q3" id="cards"></div>
     <div class="card mt">
-        <h2>Financing Summary</h2>
-        <p class="lead">This comparison shows how my experience in repo financing and MBS applies to DeFi operations, including collateral management, margin monitoring, and funding cost analysis.</p>
-        <div class="tbl-wrap"><table class="data" id="repoTbl"><thead><tr><th>Repo / MBS financing</th><th>Morpho equivalent</th><th class="n">This position</th></tr></thead><tbody></tbody></table></div>
+      <h2>Needs Attention</h2>
+      <p class="lead">Open items from the action tracker, most severe first.</p>
+      <ul class="changes" id="attn"></ul>
     </div>
     <div class="card mt">
-      <h2>PRIME / PYUSD Market <span class="tag" id="mktTag">Observed</span></h2>
-      <p class="lead">The Morpho market the loan sits in. Sentora's PRIME Main vault is a major lender here.</p>
+      <h2>PRIME Markets in the Vault <span class="tag" id="mktTag">Observed</span></h2>
+      <p class="lead">The Morpho markets where the PRIME Main vault lends PYUSD against PRIME.</p>
       <div class="tbl-wrap"><table class="data" id="mktTbl"><thead><tr><th>Market</th><th class="n">Liquidation LTV</th><th class="n">Borrow APY</th><th class="n">Utilization</th><th class="n">Available liquidity</th><th class="n">Total borrowed</th><th class="n">PRIME price</th><th class="n">PRIME NAV</th><th class="n">PRIME 24h volume</th></tr></thead><tbody></tbody></table></div>
       <details class="bg">
         <summary>PRIME Background</summary>
@@ -278,110 +318,129 @@ tr.cur td{font-weight:600}
     </div>
   </section>
 
-  <!-- MARGIN & STRESS -->
-  <section class="tab" id="tab-risk">
-    <div class="grid g3">
-      <div class="card">
-        <h2>Position <span class="tag sim">Simulated position</span> <span class="tag" id="posTag">Observed prices</span></h2>
-        <p class="lead">Loan-to-value against the mandate's margin levels and the market's liquidation point. Ticks: target 62%, margin call 68%, hard limit 75%, liquidation at the market LLTV.</p>
-        <div id="ltvBar"></div>
-        <div class="tbl-wrap mt"><table class="data" id="posTbl"><tbody></tbody></table></div>
-      </div>
-      <div class="card">
-        <h2>Stress Scenario <span class="tag sim">Simulated</span></h2>
-        <p class="lead">Move the inputs; every tab and the action queue update.</p>
-        <div class="slider"><label for="sImp">PRIME NAV impairment</label><input type="range" id="sImp" min="0" max="25" step="0.5" value="0"><span class="v" id="vImp">0%</span></div>
-        <div class="slider"><label for="sRate">Borrow APY</label><input type="range" id="sRate" min="0" max="40" step="0.25" value="0"><span class="v" id="vRate"></span></div>
-        <div class="slider"><label for="sDays">Days forward</label><input type="range" id="sDays" min="0" max="90" step="1" value="0"><span class="v" id="vDays">0</span></div>
-        <div class="slider"><label for="sDisc">Sale discount to NAV</label><input type="range" id="sDisc" min="0" max="10" step="0.25" value="1"><span class="v" id="vDisc">1%</span></div>
-        <div class="row" style="margin-top:8px;gap:6px">
-          <button class="btn ghost sm" data-preset="live">Reset to live</button>
-          <button class="btn ghost sm" data-preset="credit">Credit event: -12% NAV</button>
-          <button class="btn ghost sm" data-preset="squeeze">Funding squeeze: 100% utilization</button>
-          <button class="btn ghost sm" data-preset="combined">Combined, 30 days</button>
-        </div>
-        <p class="note" id="presetNote" style="margin-top:8px"></p>
-      </div>
-    </div>
-    <div class="card mt">
-      <h2>Required Collateral or Repayment</h2>
-      <p class="lead">What restores the position to the 62% target, in either collateral or cash.</p>
-      <div class="tbl-wrap"><table class="data" id="needTbl"><thead><tr><th>Measure</th><th class="n">Value</th><th>Note</th></tr></thead><tbody></tbody></table></div>
-    </div>
-    <div class="card mt">
-      <h2>Largest Borrowers in This Market <span class="tag" id="bTag">Observed</span></h2>
-      <p class="lead">Other borrowers' health matters too: clustered liquidations would push PRIME sales into the same thin secondary market the client relies on for an exit. Health factors are calculated from collateral, the API price as an oracle proxy, and the market LLTV.</p>
-      <div class="tbl-wrap"><table class="data" id="borTbl"><thead><tr><th>Borrower</th><th class="n">Debt</th><th class="n">Share of market debt</th><th class="n">Collateral</th><th class="n">Health factor (calculated)</th><th class="n">PRIME drop to liquidation</th></tr></thead><tbody></tbody></table></div>
-    </div>
-  </section>
-
-  <!-- FINANCING -->
-  <section class="tab" id="tab-carry">
+  <!-- VAULT & LIQUIDITY -->
+  <section class="tab" id="tab-vault">
     <div class="card">
-      <h2>Financing &amp; Carry <span class="tag sim">Simulated position</span></h2>
-      <p class="lead">PRIME income on the collateral against the cost of the PYUSD debt. Excludes any token incentives.</p>
-      <div class="tbl-wrap"><table class="data" id="carryTbl"><tbody></tbody></table></div>
+      <h2>Vault Allocations <span class="tag" id="vTag">Observed</span></h2>
+      <p class="lead">Where PRIME Main's PYUSD is allocated across markets. Available to deallocate is the amount that could be returned to the vault, limited by its supply in each market and that market's available liquidity.</p>
+      <div class="tbl-wrap"><table class="data" id="allocTbl"><thead><tr><th>Market</th><th class="n">Vault supply</th><th class="n">Share of vault</th><th class="n">Market utilization</th><th class="n">Market liquidity</th><th class="n" title="Available to deallocate: the amount that could be returned to the vault, limited by its supply in this market and the market's available liquidity">Deallocatable</th><th class="n">Vault share of market supply</th></tr></thead><tbody></tbody></table></div>
     </div>
-    <div class="card mt">
-      <h2>Carry Sensitivity to Utilization</h2>
-      <p class="lead">Morpho's adaptive rate model targets 90% utilization. Above it the borrow rate rises steeply, up to 4x the target rate at 100%, and the target rate itself doubles if utilization stays at 100% for five days. This is the DeFi version of a funding squeeze.</p>
-      <div class="tbl-wrap"><table class="data" id="irmTbl"><thead><tr><th class="n">Utilization</th><th class="n">Borrow APY</th><th class="n">Annual cost</th><th class="n">Net carry</th><th class="n">Return on equity</th><th>Verdict</th></tr></thead><tbody></tbody></table></div>
+    <div class="grid g2 mt">
+      <div class="card">
+        <h2>Withdrawal Capacity</h2>
+        <p class="lead">What depositors could withdraw now, and what would need an allocator action first.</p>
+        <div class="tbl-wrap"><table class="data" id="wTbl"><tbody></tbody></table></div>
+        <p class="note" style="margin-top:8px">Withdrawal capacity depends on the vault's idle PYUSD and its liquidity adapter, not on utilization alone. Supply caps limit new allocations; lowering one does not withdraw existing exposure or force borrowers to repay.</p>
+      </div>
+      <div class="card">
+        <h2>Changes Since Last Check</h2>
+        <p class="lead" id="chgLead">Compared with the last recorded check.</p>
+        <div class="tbl-wrap"><table class="data" id="chgTbl"><thead><tr><th>Measure</th><th class="n">Last check</th><th class="n">Now</th><th class="n">Change</th><th>Flag</th></tr></thead><tbody></tbody></table></div>
+      </div>
     </div>
   </section>
 
-  <!-- ACTIONS -->
+  <!-- BORROWERS & STRESS -->
+  <section class="tab" id="tab-borrowers">
+    <div class="card">
+        <h2>Largest Borrower Positions <span class="tag" id="bTag">Observed</span></h2>
+        <p class="lead">Health is calculated from collateral, the API's USD price for PRIME, and the market's liquidation LTV. That price is a proxy: liquidation depends on the market oracle's quote, so a position below 1.00 is potentially liquidatable until confirmed against the oracle.</p>
+        <div class="tbl-wrap"><table class="data" id="borTbl"><thead><tr><th>Borrower</th><th class="n">Debt</th><th class="n">Share of market debt</th><th class="n">Collateral value</th><th class="n">Health factor</th><th class="n">PRIME drop to liquidation</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card mt">
+      <h2>Concentration</h2>
+      <div class="kv wide" id="concKv"></div>
+    </div>
+    <div class="card mt">
+      <h2>Price Stress <span class="tag sim">Stress assumptions</span></h2>
+      <p class="lead">Listed positions that would reach their liquidation LTV if PRIME fell straight to each level. Collateral to sell includes the market's liquidation incentive. Shortfall is debt left uncovered once all of a position's collateral is sold, shared by suppliers in proportion to their supply.</p>
+      <div class="row" style="margin-bottom:10px"><label class="f">Assumed PRIME sale capacity ($M per day)<input type="number" id="capIn" min="0" step="0.1" style="width:110px"></label><span class="note" id="capNote"></span></div>
+      <div class="tbl-wrap"><table class="data" id="stTbl"><thead><tr><th class="n">PRIME price change</th><th class="n">Positions reaching liquidation LTV</th><th class="n">Debt in those positions</th><th class="n">PRIME to sell</th><th class="n">Days to sell at assumed capacity</th><th class="n">Shortfall</th><th class="n">Vault share of shortfall</th></tr></thead><tbody></tbody></table></div>
+      <p class="note" style="margin-top:8px">Trading volume does not show executable depth. Sale capacity is an input assumption until confirmed with executable quotes.</p>
+    </div>
+  </section>
+
+  <!-- DATA CHECKS -->
+  <section class="tab" id="tab-checks">
+    <div class="card">
+      <h2>Data Checks</h2>
+      <p class="lead">Run on every load. A flagged check means a figure elsewhere on the page should not be relied on until it is resolved.</p>
+      <div class="tbl-wrap"><table class="data" id="chkTbl"><thead><tr><th>Check</th><th>Result</th><th>Value</th><th>Detail</th><th>Source</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="card mt">
+      <h2>Watch Levels <span class="tag sim">Simulated policy</span></h2>
+      <div class="tbl-wrap"><table class="data" id="wlTbl"><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ACTION TRACKER -->
   <section class="tab" id="tab-actions">
     <div class="card">
-      <h2>Action Queue <span class="tag sim">Simulated</span></h2>
-      <p class="lead">Generated from the position, the stress scenario, the records, and the exit plan. Each item has an issue, dollar amount, owner, deadline, and resolution. An item resolves only when the condition is verified as cleared; accepted risks stay visible.</p>
-      <div class="tbl-wrap"><table class="data" id="actTbl"><thead><tr><th>ID</th><th>Issue</th><th class="n">Amount</th><th>Owner</th><th>Deadline</th><th>Status</th><th>Resolution</th></tr></thead><tbody></tbody></table></div>
+      <h2>Action Tracker <span class="tag sim">Simulated</span></h2>
+      <p class="lead">Ops prepares and verifies actions. Risk approves them before execution.</p>
+      <p class="note" id="evid" style="margin:-4px 0 10px"></p>
+      <div class="tbl-wrap"><table class="data" id="actTbl"><thead><tr><th>ID</th><th>Issue</th><th class="n">Amount involved</th><th>Proposed response</th><th>Owner</th><th>Status</th><th>Next step</th></tr></thead><tbody></tbody></table></div>
+      <p class="note" id="actNote" style="margin-top:8px"></p>
     </div>
   </section>
 
-  <!-- RECON -->
-  <section class="tab" id="tab-recon">
-    <div class="card">
-      <h2>Position Reconciliation <span class="tag sim">Simulated records</span></h2>
-      <p class="lead">Sentora's position record vs the on-chain position, with debt accruing at the observed borrow rate. Tolerance: $1,000.</p>
-      <div class="tbl-wrap"><table class="data" id="recTbl"><thead><tr><th>Item</th><th class="n">Sentora record</th><th class="n">On-chain</th><th class="n">Difference</th><th>Status</th><th>Explained by</th></tr></thead><tbody></tbody></table></div>
-    </div>
-    <div class="card mt">
-      <h2>Position Events</h2>
-      <div class="tbl-wrap"><table class="data" id="evTbl"><thead><tr><th>Time</th><th>Event</th><th class="n">Amount</th><th>Tx hash</th><th>On-chain</th><th>Booked</th></tr></thead><tbody></tbody></table></div>
-    </div>
-  </section>
+  <!-- CASE STUDY -->
+  <section class="tab" id="tab-case">
+    <div class="callout" style="margin-top:0">The same market from the borrower's side: a simulated position of $10M of PRIME collateral against $6M of PYUSD debt, at live market prices and rates. This example applies my repo and MBS experience to collateral monitoring and funding needs in DeFi.</div>
 
-  <!-- EXIT -->
-  <section class="tab" id="tab-exit">
-    <div class="grid g3">
+    <div class="card mt">
+      <h2>Current Position <span class="tag sim">Simulated position</span> <span class="tag" id="posTag">Observed prices</span></h2>
+      <p class="lead">Simulated limits: target LTV 62%, collateral call at 68%, hard limit at 75%. Positions become eligible for liquidation above the market's liquidation LTV. These figures stay at today's price; the stress test below shows stressed results.</p>
+      <div class="qgrid q4" id="caseTiles"></div>
+    </div>
+
+    <div class="grid g2 mt">
       <div class="card">
-        <h2>Exit Plan <span class="tag sim">Simulated plan</span></h2>
-        <p class="lead">The debt must be repaid in PYUSD before all PRIME can be released. Collateral can be withdrawn in stages only while LTV stays at or below the 62% target, so the unwind runs as a ladder: withdraw, sell, repay, repeat.</p>
-        <div id="exitSummary"></div>
+        <h2>Stress Test <span class="tag sim">Simulated</span></h2>
+        <p class="lead">Lower the PRIME price to see the resulting LTV and what restores the 62% target.</p>
+        <div class="slider"><label for="cPx">PRIME price decline</label><input type="range" id="cPx" min="0" max="30" step="0.5" value="0"><span class="v" id="vPx">0.0%</span></div>
+        <div id="ltvBar"></div>
+        <div class="tbl-wrap"><table class="data" id="stressTbl"><tbody></tbody></table></div>
       </div>
       <div class="card">
-        <h2>Funding Routes</h2>
-        <p class="lead">Choose what the unwind may use.</p>
-        <label class="ck"><input type="checkbox" id="rCash" checked> Client PYUSD on hand <span class="note" id="cashNote"></span></label>
-        <label class="ck"><input type="checkbox" id="rSec" checked> Sell PRIME in secondary markets, assuming a maximum participation of <input type="number" id="secPct" value="25" min="1" max="100" step="1" style="width:56px">% of observed 24h volume per day <span class="tag sim">assumption</span></label>
-        <label class="ck"><input type="checkbox" id="rRed"> Redeem PRIME with the issuer, <input type="number" id="redCap" value="0" min="0" step="0.5" style="width:64px"> $M per day (capacity not published; enter an assumption)</label>
-        <label class="ck"><input type="checkbox" id="rLine"> Outside PYUSD funding line, <input type="number" id="lineAmt" value="3" min="0" step="0.5" style="width:64px"> $M available day 1</label>
-        <p class="note" style="margin-top:10px">An atomic unwind (flash-loan repay, withdraw, sell in one transaction) needs enough PRIME liquidity for a single sale of the full position.</p>
+        <h2>Operations Response</h2>
+        <p class="lead">What needs review, what needs approval, and whether the client can fund a repayment, at the stressed price.</p>
+        <ul class="changes resp" id="respList"></ul>
       </div>
     </div>
+
     <div class="card mt">
-      <h2>Unwind Ladder</h2>
-      <div class="tbl-wrap"><table class="data" id="ladTbl"><thead><tr><th>Day</th><th class="n">Client cash / line used</th><th class="n">PRIME withdrawn</th><th class="n">Sale proceeds</th><th class="n">Repaid</th><th class="n">Debt after</th><th class="n">LTV after</th></tr></thead><tbody></tbody></table></div>
+      <h2>Supporting Detail</h2>
+      <h3 class="sub">Repo comparison</h3>
+      <div class="tbl-wrap"><table class="data" id="repoTbl"><thead><tr><th>Repo / MBS financing</th><th>Morpho equivalent</th><th class="n">This position</th></tr></thead><tbody></tbody></table></div>
+      <details class="bg">
+        <summary>Carry calculation</summary>
+        <div class="tbl-wrap"><table class="data" id="carryTbl"><tbody></tbody></table></div>
+        <p class="note" id="carryNote" style="margin-top:8px"></p>
+      </details>
+      <details class="bg">
+        <summary>Unwind assumptions</summary>
+        <p class="note" style="margin:6px 0">The debt must be repaid in PYUSD before all PRIME is released. Collateral can be withdrawn in stages only while LTV stays at or below the 62% target, so an unwind runs as a ladder: withdraw, sell, repay, repeat.</p>
+        <div class="grid g2">
+          <div>
+            <label class="ck"><input type="checkbox" id="rCash" checked> Client PYUSD on hand <span class="note" id="cashNote"></span></label>
+            <label class="ck"><input type="checkbox" id="rSec" checked> Sell PRIME in secondary markets at up to <input type="number" id="secPct" value="25" min="1" max="100" step="1" style="width:56px">% of observed 24h volume per day</label>
+            <label class="ck"><input type="checkbox" id="rRed"> Redeem PRIME with the issuer, <input type="number" id="redCap" value="0" min="0" step="0.5" style="width:64px"> $M per day (capacity not published)</label>
+            <label class="ck"><input type="checkbox" id="rLine"> Outside PYUSD funding line, <input type="number" id="lineAmt" value="3" min="0" step="0.5" style="width:64px"> $M on day 1</label>
+            <label class="ck">Sale discount to NAV <input type="number" id="cDisc" value="1" min="0" max="20" step="0.25" style="width:64px">%</label>
+          </div>
+          <div id="exitSummary"></div>
+        </div>
+      </details>
     </div>
   </section>
 </main>
 
 <footer>
   <div class="wrap">
-    <p>Public Morpho and CoinGecko market data with labeled fallback estimates; PRIME structure from Sentora's published asset review. Client position, mandate, and records are simulated. Not affiliated with or endorsed by Sentora, Morpho, Figure, or Hastra.</p>
+    <p>Public Morpho and CoinGecko data with a dated fallback snapshot; PRIME structure from Sentora's published asset review. Watch levels, scenarios, actions, and the case-study position are simulated. Not affiliated with or endorsed by Sentora, Morpho, Figure, or Hastra.</p>
   </div>
 </footer>
-
 <script>
 (function(){
 'use strict';
@@ -394,6 +453,8 @@ const usd = v => { if(v==null || !isFinite(v)) return 'n/a'; const a = Math.abs(
 const susd = v => (v>0?'+':v<0?'-':'') + usd(Math.abs(v));
 const tok = (v, sym) => { const a = Math.abs(v), s = v<0?'-':''; return (a < 1e5 ? s+Math.round(a).toLocaleString('en-US') : s+(a/1e6).toFixed(2)+'M') + ' ' + sym; };
 const pct = (v,d=1) => (v==null || !isFinite(v)) ? 'n/a' : (v*100).toFixed(d) + '%';
+const spct = (v,d=1) => (v==null || !isFinite(v)) ? 'n/a' : (v>0?'+':'') + (v*100).toFixed(d) + '%';
+const pts = v => (v==null || !isFinite(v)) ? 'n/a' : (v>0?'+':'') + (v*100).toFixed(1) + ' pts';
 const bp = v => (v==null || !isFinite(v)) ? 'n/a' : (v>0?'+':'') + Math.round(v*1e4) + ' bp';
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ICON = {good:'&#10003;', warn:'&#9888;', crit:'&#10007;', neutral:'&#8226;', info:'&#8505;'};
@@ -404,15 +465,6 @@ const TZ = 'America/New_York';
 const NOW = new Date();
 const hhmm = d => d.toLocaleTimeString('en-US',{timeZone:TZ, hour:'numeric', minute:'2-digit'}) + ' ET';
 const dShort = d => d.toLocaleDateString('en-US',{timeZone:TZ, weekday:'short', month:'short', day:'numeric'});
-const ET_OFFSET = NOW.getTime() - new Date(NOW.toLocaleString('en-US',{timeZone:TZ})).getTime();
-const at = (h, m, dayOffset=0) => { const d = new Date(NOW.toLocaleString('en-US',{timeZone:TZ})); d.setDate(d.getDate()+dayOffset); d.setHours(h, m, 0, 0); return new Date(d.getTime() + ET_OFFSET); };
-const ago = days => new Date(NOW.getTime() - days*86400000);
-function bizDay(n, h, m){ // n business days from today at h:m ET; n=0 means today (or the next business day if already past)
-  let k = 0, d = 0, t;
-  while(true){ t = at(h, m, d); const wd = t.toLocaleDateString('en-US',{timeZone:TZ, weekday:'short'}); const biz = !['Sat','Sun'].includes(wd);
-    if(biz && t > NOW){ if(k === n) return t; k++; } d++; if(d > 30) return t; }
-}
-const dl = d => `${dShort(d)}, ${hhmm(d)}`;
 
 /* ================= sources ================= */
 const SRC = {
@@ -424,24 +476,23 @@ const SRC = {
 };
 const link = s => `<a href="${s.url}" target="_blank" rel="noopener">${esc(s.label)}</a>`;
 
-/* ================= market data ================= */
-const PRIME_VAULT = '0xc21b08c16458202593d4d9b26b9984ee67b38bbd';   // Sentora PRIME Main (Morpho Vault V2)
+/* ================= watch levels (simulated policy) ================= */
+const W = {util:.92, wliq:.05, near:.10, top:.25, recon:.005, dev:.01, ageMin:60, navDays:2, coverage:.80,
+  chg:{tvl:.05, idle:.25, supply:.05, util:.03, price:.01}};
+
+/* ================= data ================= */
+const VAULT = '0xc21b08c16458202593d4d9b26b9984ee67b38bbd';   // Sentora PRIME Main (Morpho Vault V2)
 const SNAP_AT = 'Oct 5, 2026';
-// Fallback values. Observed ones carry their public source and date; the rest are estimates.
-const SNAP = {
-  price:{v:1.0625, p:'obs', why:`RWA.xyz token price, ${SNAP_AT}`},
-  vol:{v:2134965, p:'obs', why:`CoinGecko 24h volume, ${SNAP_AT}`},
-  util:{v:0.898, p:'obs', why:`Morpho API utilization for the PRIME/PYUSD market, ${SNAP_AT} 7:29 PM ET`},
-  lltv:{v:0.86, p:'est', why:'Assumed 86% liquidation LTV; live market parameter unavailable'},
-  borrow:{v:0.065, p:'est', why:'Assumed 6.5% borrow APY; live rate unavailable'},
-  liq:{v:null, p:'na', why:'Not available in snapshot'},
-  borrowed:{v:null, p:'na', why:'Not available in snapshot'},
-  yield:{v:0.0049*365/30, p:'est', why:'Annualized from the +0.49% 30-day NAV change on RWA.xyz (Oct 5, 2026), net of the 0.50% management fee'}
-};
-const M = {source:'loading', at:null, err:'', partial:[], marketId:null, oracle:null, borrowers:null};
-['price','vol','util','lltv','borrow','liq','borrowed','yield'].forEach(k=>M[k] = {...SNAP[k]});
-function P(key, text){
-  const f = M[key]; if(!f || f.p==='na' || f.v==null) return `<span class="na" title="${esc(f?f.why:'Not available')}">n/a</span>`;
+const NAV = {v:1.06, date:new Date('2026-10-05T23:29:00Z'), why:'RWA.xyz net asset value, Oct 5, 2026'};
+// Last recorded check: observed values from Oct 5, 2026, 7:29 PM ET.
+const BASE = {label:'Oct 5, 7:29 PM ET', tvl:221.07e6, idle:8.0e6, supply:210.1e6, util:.898, price:1.0625};
+const fv = (v, p, why) => ({v: (v==null || !isFinite(v)) ? null : v, p: (v==null || !isFinite(v)) ? 'na' : p, why});
+const NA = why => ({v:null, p:'na', why});
+const D = {source:'loading', at:null, err:'', partial:[], tvl:NA('loading'), liq:NA('loading'), idle:NA('loading'), markets:[],
+  cg:{price:NA('not loaded'), vol:fv(2134965,'obs',`CoinGecko 24h volume, ${SNAP_AT}`), updated:null}};
+const isPrime = m => /PRIME/i.test(m.coll||'');
+function show(f, text){
+  if(!f || f.p==='na' || f.v==null) return `<span class="na" title="${esc(f?f.why:'Not available')}">n/a</span>`;
   return f.p==='est' ? `<span class="est" title="Estimated: ${esc(f.why)}">${text}<sup>est</sup></span>` : `<span title="Observed: ${esc(f.why)}">${text}</span>`;
 }
 const API = 'https://api.morpho.org/graphql';
@@ -458,371 +509,541 @@ async function gql(query){
 }
 const num = x => x==null ? null : Number(x);
 const frac = x => { const n = num(x); if(n==null || !isFinite(n)) return null; return n > 1e6 ? n/1e18 : n > 1.5 ? n/100 : n; };
+
 async function loadLive(){
   const t = new Date(); const src = `Morpho API, ${hhmm(t)}`;
-  // 1) find the PRIME/PYUSD market through Sentora PRIME Main's adapter positions
-  const a = await gql(`{ v: vaultV2ByAddress(address:"${PRIME_VAULT}", chainId:1){ adapters(first: 20){ items { ... on MorphoMarketV1Adapter { positions(first: 50){ items { market { marketId collateralAsset { symbol } loanAsset { symbol } } } } } } } } }`);
-  const items = (a.v && a.v.adapters && a.v.adapters.items) || [];
-  let id = null;
-  items.forEach(ad=>((ad.positions && ad.positions.items)||[]).forEach(p=>{ const m = p.market; if(m && m.collateralAsset && /PRIME/i.test(m.collateralAsset.symbol) && m.loanAsset && /PYUSD/i.test(m.loanAsset.symbol)) id = id || m.marketId; }));
-  if(!id) throw new Error('PRIME/PYUSD market not found in Sentora PRIME Main allocations');
-  // 2) market parameters and state (fields as documented in Morpho's market query example)
-  const d = await gql(`{ m: marketById(marketId:"${id}", chainId:1){ marketId lltv oracle { address } collateralAsset { address decimals priceUsd } state { borrowApy supplyApy utilization liquidityAssetsUsd collateralAssetsUsd borrowAssetsUsd } } }`);
-  const m = d.m; if(!m) throw new Error('Market not returned');
-  M.marketId = id; M.oracle = m.oracle && m.oracle.address; M.collDec = m.collateralAsset && m.collateralAsset.decimals!=null ? Number(m.collateralAsset.decimals) : null;
-  const set = (k, v, why) => { if(v!=null && isFinite(v)) M[k] = {v, p:'obs', why}; };
-  set('lltv', frac(m.lltv), src + ' (lltv)');
-  set('price', num(m.collateralAsset && m.collateralAsset.priceUsd), src + ' (collateralAsset.priceUsd, oracle-referenced price proxy)');
-  if(m.state){
-    set('borrow', frac(m.state.borrowApy), src + ' (state.borrowApy)');
-    set('util', frac(m.state.utilization), src + ' (state.utilization)');
-    set('liq', num(m.state.liquidityAssetsUsd), src + ' (state.liquidityAssetsUsd)');
-    set('borrowed', num(m.state.borrowAssetsUsd), src + ' (state.borrowAssetsUsd)');
+  // 1) vault totals
+  const v = (await gql(`{ v: vaultV2ByAddress(address:"${VAULT}", chainId:1){ totalAssetsUsd liquidityUsd idleAssetsUsd } }`)).v;
+  if(!v) throw new Error('Vault not returned');
+  D.tvl = fv(num(v.totalAssetsUsd),'obs',src+' (totalAssetsUsd)');
+  D.liq = fv(num(v.liquidityUsd),'obs',src+' (liquidityUsd)');
+  D.idle = fv(num(v.idleAssetsUsd),'obs',src+' (idleAssetsUsd)');
+  // 2) allocations by market, from the vault's adapter positions
+  const a = await gql(`{ v: vaultV2ByAddress(address:"${VAULT}", chainId:1){ adapters(first: 20){ items { ... on MorphoMarketV1Adapter { positions(first: 50){ items { market { marketId collateralAsset { symbol } loanAsset { symbol } } state { supplyAssetsUsd } } } } } } } }`);
+  const items = (a.v && a.v.adapters && a.v.adapters.items) || []; const pos = {};
+  items.forEach(ad=>((ad.positions && ad.positions.items)||[]).forEach(p=>{ const m = p.market; if(!m || !m.marketId) return;
+    const x = pos[m.marketId] = pos[m.marketId] || {id:m.marketId, coll: m.collateralAsset ? m.collateralAsset.symbol : 'None (idle market)', loan: m.loanAsset ? m.loanAsset.symbol : '?', vs:0};
+    x.vs += num(p.state && p.state.supplyAssetsUsd) || 0; }));
+  const list = Object.values(pos).filter(x=>x.vs > 1000 || isPrime(x));
+  if(!list.some(isPrime)) throw new Error('No PRIME market found in the vault allocations');
+  // 3) market parameters and state
+  const q = '{ ' + list.map((x,i)=>`m${i}: marketById(marketId:"${x.id}", chainId:1){ lltv oracle { address } collateralAsset { decimals priceUsd } state { borrowApy utilization liquidityAssetsUsd collateralAssetsUsd borrowAssetsUsd } }`).join(' ') + ' }';
+  const md = await gql(q);
+  D.markets = list.map((x,i)=>{ const m = md['m'+i] || {}; const st = m.state || {}; const s = k => `${src} (${k})`;
+    return {id:x.id, coll:x.coll, loan:x.loan, vaultSupply:fv(x.vs,'obs',src+' (adapter position supplyAssetsUsd)'),
+      lltv:fv(frac(m.lltv),'obs',s('lltv')), price:fv(num(m.collateralAsset && m.collateralAsset.priceUsd),'obs',s('collateralAsset.priceUsd: API USD price used as an oracle proxy')),
+      collDec: m.collateralAsset && m.collateralAsset.decimals!=null ? Number(m.collateralAsset.decimals) : null, oracle: m.oracle && m.oracle.address,
+      util:fv(frac(st.utilization),'obs',s('state.utilization')), apy:fv(frac(st.borrowApy),'obs',s('state.borrowApy')),
+      liqM:fv(num(st.liquidityAssetsUsd),'obs',s('state.liquidityAssetsUsd')), borrow:fv(num(st.borrowAssetsUsd),'obs',s('state.borrowAssetsUsd')),
+      collUsd:fv(num(st.collateralAssetsUsd),'obs',s('state.collateralAssetsUsd')), supply:NA('Market supply total not loaded'), borrowers:null}; });
+  D.source = 'live'; D.at = t;
+  // 4) optional: market supply totals (for each supplier's share)
+  try{ const sd = await gql('{ ' + D.markets.map((m,i)=>`m${i}: marketById(marketId:"${m.id}", chainId:1){ state { supplyAssetsUsd } }`).join(' ') + ' }');
+    D.markets.forEach((m,i)=>{ const x = sd['m'+i]; const v = num(x && x.state && x.state.supplyAssetsUsd); if(v!=null) m.supply = fv(v,'obs',src+' (state.supplyAssetsUsd)'); }); }
+  catch(e){ D.partial.push('Market supply totals: ' + e.message); }
+  // 5) optional: largest borrowers in each PRIME market
+  for(const m of D.markets.filter(isPrime)){
+    try{ const b = await gql(`{ p: marketPositions(first: 20, orderBy: BorrowShares, orderDirection: Desc, where: { marketUniqueKey_in: ["${m.id}"] }){ items { user { address } state { collateral borrowAssetsUsd } } } }`);
+      if(m.collDec==null) throw new Error('collateral decimals not observed');
+      m.borrowers = ((b.p && b.p.items)||[]).filter(x=>x.state && num(x.state.borrowAssetsUsd) > 1000)
+        .map(x=>({addr:x.user && x.user.address, debt:num(x.state.borrowAssetsUsd), units:Number(x.state.collateral)/Math.pow(10, m.collDec)}));
+    }catch(e){ D.partial.push('Borrower positions: ' + e.message); }
   }
-  M.source = 'live'; M.at = t;
-  // 3) optional: largest borrowers
-  try{
-    const b = await gql(`{ p: marketPositions(first: 10, orderBy: BorrowShares, orderDirection: Desc, where: { marketUniqueKey_in: ["${id}"] }){ items { user { address } state { collateral borrowAssets borrowAssetsUsd } } } }`);
-    // Health factor is not an API field: calculate it as collateral × price × LLTV ÷ debt, with the API price as a proxy for the oracle.
-    const canHF = M.collDec!=null && M.price.p==='obs' && M.lltv.p==='obs';
-    M.borrowers = ((b.p && b.p.items)||[]).filter(x=>x.state && x.state.borrowAssetsUsd > 1000).map(x=>{
-      const coll = canHF ? Number(x.state.collateral)/Math.pow(10, M.collDec) : null;
-      return {addr:x.user.address, debt:x.state.borrowAssetsUsd, collUSD: coll!=null ? coll*M.price.v : null, hf: coll!=null ? coll*M.price.v*M.lltv.v/x.state.borrowAssetsUsd : null};
-    });
-    if(!canHF) M.partial.push('Borrower health factors: collateral decimals, price, or LLTV not observed');
-  }catch(e){ M.partial.push('Largest borrowers: ' + e.message); }
-  // 4) optional: PRIME 24h volume
-  try{
-    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=hastra-prime&vs_currencies=usd&include_24hr_vol=true');
-    const j = await r.json(); const v = j['hastra-prime'] && j['hastra-prime'].usd_24h_vol;
-    if(v!=null) M.vol = {v, p:'obs', why:`CoinGecko API 24h volume, ${hhmm(new Date())}`};
-  }catch(e){ M.partial.push('PRIME 24h volume (CoinGecko): ' + e.message + '; using Oct 5 figure'); }
+  // 6) optional: PRIME market price, volume, and update time
+  try{ const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=hastra-prime&vs_currencies=usd&include_24hr_vol=true&include_last_updated_at=true');
+    const j = await r.json(); const x = j['hastra-prime'] || {}; const tt = `CoinGecko API, ${hhmm(new Date())}`;
+    if(x.usd!=null) D.cg.price = fv(num(x.usd),'obs',tt+' (usd)');
+    if(x.usd_24h_vol!=null) D.cg.vol = fv(num(x.usd_24h_vol),'obs',tt+' (usd_24h_vol)');
+    if(x.last_updated_at) D.cg.updated = new Date(x.last_updated_at*1000);
+    if(x.usd==null) throw new Error('PRIME not returned');
+  }catch(e){ D.partial.push('CoinGecko PRIME price: ' + e.message + '; using Oct 5 volume'); }
+}
+function loadSnap(){
+  D.source = 'snapshot';
+  const w = `Morpho API, ${SNAP_AT} 7:29 PM ET`;
+  D.tvl = fv(BASE.tvl,'obs',`Trading Strategy, ${SNAP_AT}`); D.idle = fv(BASE.idle,'obs',w+' (idle assets)'); D.liq = NA('Not available in snapshot');
+  D.markets = [{id:null, coll:'PRIME', loan:'PYUSD', vaultSupply:fv(BASE.supply,'obs',w+' (adapter positions)'),
+    lltv:fv(.86,'est','Assumed 86% liquidation LTV; live market parameter unavailable'), price:fv(BASE.price,'obs',`RWA.xyz token price, ${SNAP_AT}`),
+    collDec:null, oracle:null, util:fv(BASE.util,'obs',w+' (utilization)'), apy:fv(.065,'est','Assumed 6.5% borrow APY; live rate unavailable'),
+    liqM:NA('Not available in snapshot'), borrow:NA('Not available in snapshot'), collUsd:NA('Not available in snapshot'), supply:NA('Not available in snapshot'), borrowers:null}];
 }
 
-/* ================= simulated client position ================= */
-const POLICY = {target:.62, call:.68, hard:.75, minBuffer:.15, carryReview:.0075, exitDays:5};
-let S;
-function seed(){
-  const r = M.borrow.v, open = 30, booked = 23;
-  const debtNow = 6.0e6;                                     // on-chain debt today, principal plus accrued interest
-  const principal = debtNow / Math.pow(1+r, open/365);
-  const bookedRate = Math.max(0, r - 0.004);                 // record still uses last month's expected rate
-  const recordDebt = principal * Math.pow(1+bookedRate, booked/365);
-  const units = Math.round(10.0e6 / M.price.v);
-  S = {
-    units, debt:debtNow, cash:1.5e6, line:0,
-    rec:{units, debt:recordDebt, bookedThrough: ago(open-booked), rate:bookedRate},
-    principal, openedAt: ago(open),
-    stress:{imp:0, rate:null, days:0, disc:.01},
-    ex:{}, seq:1,
-    events:[
-      {t:ago(open), text:'Collateral deposited', amt:tok(units,'PRIME'), hash:hex(64), chain:true, booked:true},
-      {t:ago(open), text:'PYUSD borrowed', amt:tok(principal,'PYUSD'), hash:hex(64), chain:true, booked:true},
-      {t:ago(open-booked), text:`Interest booked through ${dShort(ago(open-booked))} at ${pct(bookedRate,2)}`, amt:usd(recordDebt-principal), hash:'', chain:null, booked:true}
-    ]
-  };
-}
+/* ================= scenario ================= */
+const SC = {shock:0, drain:false};
+const scenKey = () => `${SC.shock}|${SC.drain?1:0}`;
+const isLiveScen = () => !SC.shock && !SC.drain;
 
 /* ================= calculations ================= */
-// Shared execution rule: a non-atomic collateral withdrawal may not leave LTV above the 62% target.
+const LIF = lltv => Math.min(1.15, 1/(0.3*lltv + 0.7));     // Morpho liquidation incentive factor
+function calcAll(){
+  const tvl = D.tvl.v, idle = D.idle.v || 0;
+  const ms = D.markets.map(m=>{
+    const vs = m.vaultSupply.v || 0;
+    const lq = SC.drain ? 0 : m.liqM.v;
+    const sup = m.supply.v!=null ? m.supply.v : (m.borrow.v!=null && m.liqM.v!=null ? m.borrow.v + m.liqM.v : null);
+    return {m, vs, share: tvl ? vs/tvl : null, util: SC.drain ? 1 : m.util.v, lq, free: lq==null ? null : Math.min(vs, lq), sup, supEst: m.supply.v==null && sup!=null, vshare: sup ? Math.min(1, vs/sup) : null};
+  });
+  const prime = ms.filter(x=>isPrime(x.m)).sort((a,b)=>b.vs-a.vs); const main = prime[0] || null;
+  const primeVS = prime.reduce((a,x)=>a+x.vs,0);
+  const mapped = ms.reduce((a,x)=>a+x.vs,0) + idle;
+  const freeable = ms.reduce((a,x)=>a+(x.free||0),0);
+  const wliq = SC.drain ? idle : D.liq.v;
+  const wliqEst = SC.drain;
+  // borrowers at the scenario price
+  const bor = [];
+  prime.forEach(x=>{ const m = x.m; if(!m.borrowers || m.price.v==null || m.lltv.v==null) return; const px = m.price.v*(1-SC.shock);
+    m.borrowers.forEach(b=>{ const coll = b.units*px; const hf = b.debt ? coll*m.lltv.v/b.debt : null; bor.push({...b, m, x, coll, hf, drop: hf ? 1-1/hf : null}); }); });
+  bor.sort((a,b)=>b.debt-a.debt);
+  const haveBor = prime.some(x=>x.m.borrowers);
+  const mBorrow = prime.reduce((a,x)=>a+(x.m.borrow.v||0),0);
+  const listed = bor.reduce((a,b)=>a+b.debt,0);
+  const near = bor.filter(b=>b.drop!=null && b.drop < W.near);
+  const liquidatable = bor.filter(b=>b.hf!=null && b.hf < 1);
+  const top = bor[0] || null;
+  const debtBase = mBorrow || listed;
+  return {tvl, idle, ms, prime, main, primeVS, mapped, freeable, wliq, wliqEst, bor, haveBor, mBorrow, listed, near, liquidatable, top, debtBase,
+    topShare: top && debtBase ? top.debt/debtBase : null, top5: debtBase ? bor.slice(0,5).reduce((a,b)=>a+b.debt,0)/debtBase : null,
+    aggLtv: prime.reduce((a,x)=>a+(x.m.collUsd.v||0),0) ? mBorrow / prime.reduce((a,x)=>a+(x.m.collUsd.v||0),0) / (1 - SC.shock) : null};
+}
+// Price ladder from the live price (not the scenario), for listed positions.
+function stressLadder(cap){
+  const drops = [0, .05, .10, .15, .20, .30]; const c = calcAll();
+  return drops.map(d=>{ let n = 0, debt = 0, sell = 0, sellUSD = 0, short = 0, vshort = 0;
+    c.prime.forEach(x=>{ const m = x.m; if(!m.borrowers || m.price.v==null || m.lltv.v==null) return; const px = m.price.v*(1-d); const lif = LIF(m.lltv.v);
+      m.borrowers.forEach(b=>{ const coll = b.units*px; if(coll*m.lltv.v >= b.debt) return;
+        n++; debt += b.debt; const seizeUSD = Math.min(coll, b.debt*lif); sellUSD += seizeUSD; sell += seizeUSD/px;
+        const sf = Math.max(0, b.debt - coll/lif); short += sf; vshort += sf*(x.vshare||0); }); });
+    return {d, n, debt, sell, sellUSD, days: sellUSD > 0 ? (cap > 0 ? sellUSD/cap : Infinity) : 0, short, vshort};
+  });
+}
+
+/* ================= data checks ================= */
+function checks(){
+  const c = calcAll(); const L = [];
+  const add = (name, res, value, detail, src) => L.push({name, res, value, detail, src});
+  if(D.source==='live') add('Vault and market data', 'pass', `Pulled ${hhmm(D.at)}`, 'Morpho API responded for the vault and its markets', 'Morpho API');
+  else add('Vault and market data', 'flag', 'Snapshot in use', `Morpho API unavailable (${D.err||'unknown error'}); figures are from the ${SNAP_AT} snapshot and estimates`, 'Morpho API');
+  if(D.source!=='live') add('Optional data sets', 'na', 'Not run', 'Live data unavailable', 'Morpho API, CoinGecko');
+  else add('Optional data sets', D.partial.length ? 'flag' : 'pass', D.partial.length ? `${D.partial.length} unavailable` : 'All loaded', D.partial.join('; ') || 'Supply totals, borrower positions, and CoinGecko price loaded', 'Morpho API, CoinGecko');
+  const miss = [];
+  [['Vault total assets',D.tvl],['Vault withdrawal liquidity',D.liq],['Vault idle PYUSD',D.idle]].forEach(([n,f])=>{ if(f.v==null) miss.push(n); });
+  c.prime.forEach(x=>[['liquidation LTV',x.m.lltv],['PRIME price',x.m.price],['utilization',x.m.util],['borrow APY',x.m.apy],['available liquidity',x.m.liqM],['total borrowed',x.m.borrow]].forEach(([n,f])=>{ if(f.v==null) miss.push('PRIME market '+n); else if(f.p==='est') miss.push('PRIME market '+n+' (estimated)'); }));
+  add('Missing or estimated fields', miss.length ? 'flag' : 'pass', miss.length ? `${miss.length} field${miss.length>1?'s':''}` : 'None', miss.join('; ') || 'Every required field observed', 'Morpho API');
+  const mp = c.main && c.main.m.price.v, cg = D.cg.price.v;
+  if(mp!=null && cg!=null){ const dev = Math.abs(mp - cg)/cg;
+    add('PRIME price: Morpho vs CoinGecko', dev <= W.dev ? 'pass' : 'flag', `${pct(dev,2)} apart`, `Morpho API $${mp.toFixed(4)} vs CoinGecko $${cg.toFixed(4)}; watch level ${pct(W.dev,0)}`, 'Morpho API, CoinGecko'); }
+  else add('PRIME price: Morpho vs CoinGecko', 'na', 'Not comparable', 'Needs both prices from live sources', 'Morpho API, CoinGecko');
+  if(D.cg.updated){ const age = (Date.now() - D.cg.updated.getTime())/60000;
+    add('PRIME price freshness', age <= W.ageMin ? 'pass' : 'flag', `${Math.round(age)} min old`, `CoinGecko last update ${hhmm(D.cg.updated)}; watch level ${W.ageMin} min. The Morpho API used here does not expose the oracle's update time.`, 'CoinGecko'); }
+  else add('PRIME price freshness', 'na', 'No timestamp', 'Price update time not available', 'CoinGecko');
+  const navAge = (NOW - NAV.date)/86400000;
+  add('PRIME NAV reference', navAge <= W.navDays ? 'pass' : 'flag', `${Math.floor(navAge)} day${Math.floor(navAge)===1?'':'s'} old`, `NAV of $${NAV.v.toFixed(2)} is a dated reference (${NAV.why}); refresh before relying on it. Watch level ${W.navDays} days.`, 'RWA.xyz');
+  if(D.source==='live' && c.tvl){ const diff = c.tvl - c.mapped;
+    add('Vault reconciliation', Math.abs(diff)/c.tvl <= W.recon ? 'pass' : 'flag', `${susd(diff)} (${pct(Math.abs(diff)/c.tvl,2)})`, `Total assets ${usdM(c.tvl)} vs market positions plus idle ${usdM(c.mapped)}; tolerance ${pct(W.recon,1)}`, 'Morpho API'); }
+  else add('Vault reconciliation', 'na', 'Not run', 'Snapshot values come from different sources and times', 'Morpho API');
+  c.prime.forEach(x=>{ const m = x.m;
+    if(m.supply.p==='obs' && m.borrow.v!=null && m.liqM.v!=null){ const diff = m.supply.v - (m.borrow.v + m.liqM.v);
+      add('Market reconciliation' + (c.prime.length>1?` (${short(m.id)})`:''), Math.abs(diff)/m.supply.v <= W.recon ? 'pass' : 'flag', `${susd(diff)}`, `Supply ${usdM(m.supply.v)} vs borrowed plus available ${usdM(m.borrow.v + m.liqM.v)}; tolerance ${pct(W.recon,1)}`, 'Morpho API'); }
+    else add('Market reconciliation', 'na', 'Not run', 'Market supply total not observed', 'Morpho API'); });
+  add('Oracle confirmation', 'na', 'Not run', 'Health factors use the API\'s USD price for PRIME. The market oracle\'s quote is not read here, so liquidation status is unconfirmed.', 'Morpho API');
+  if(c.haveBor && c.mBorrow){ const cov = c.listed/c.mBorrow;
+    add('Borrower coverage', cov >= W.coverage ? 'pass' : 'flag', `${pct(cov,0)} of debt`, `The ${c.bor.length} largest positions cover ${usdM(c.listed)} of ${usdM(c.mBorrow)} borrowed. Smaller positions are not checked one by one.`, 'Morpho API'); }
+  else add('Borrower coverage', D.source==='live' ? 'flag' : 'na', 'Not available', 'Borrower positions not loaded; borrower checks fall back to market totals', 'Morpho API');
+  return L;
+}
+
+/* ================= action tracker ================= */
+function conditions(){
+  // Each item: short issue and response for scanning; detail holds assumptions; fig holds the figures a decision is based on.
+  const c = calcAll(); const L = []; const m = c.main;
+  const F = (v, txt) => [v, txt];
+  if(m && c.prime.some(x=>x.util!=null && x.util >= W.util)){ const u = Math.max(...c.prime.map(x=>x.util||0));
+    L.push({id:'UTIL', sev: u >= .99 ? 'crit' : 'warn', issue:`Utilization is ${pct(u)}, above the ${pct(W.util,0)} watch level.`,
+      detail:`Above the 90% rate-model target, borrow rates rise and less market liquidity is available to deallocate. ${usdM(c.freeable)} is available to deallocate from markets now.`,
+      amount: c.freeable, amtNote:'available to deallocate', response:'Weigh the idle buffer against adding supply. Reallocate if approved.',
+      owner:'Vault allocator', onchain:true, verifyNote:'a reallocation changes utilization only once confirmed on-chain', fig:{util:F(u, pct(u)), amount:F(c.freeable, usdM(c.freeable))}}); }
+  if(c.wliq!=null && c.tvl && c.wliq/c.tvl < W.wliq){ const gap = c.tvl*W.wliq - c.wliq;
+    L.push({id:'WLIQ', sev:'warn', issue:`Withdrawal capacity is ${pct(c.wliq/c.tvl)}, below the ${pct(W.wliq,0)} watch level.`,
+      detail:`${usdM(c.wliq)} withdrawable against ${usdM(c.tvl)} of vault assets. ${usdM(gap)} more would reach the watch level, within what markets can release.`,
+      amount: gap, amtNote:'to reach the watch level', response:'Review the cash buffer. Reallocate available PYUSD if approved.',
+      owner:'Vault allocator', onchain:true, verifyNote:'withdrawal capacity is re-read after the allocation confirms', fig:{share:F(c.wliq/c.tvl, pct(c.wliq/c.tvl)), amount:F(gap, usdM(gap))}}); }
+  if(c.near.length){ const debt = c.near.reduce((a,b)=>a+b.debt,0); const n = c.near.length;
+    const px = m.m.price.v*(1-SC.shock); const minHf = Math.min(...c.near.map(b=>b.hf)); const minBuf = Math.min(...c.near.map(b=>b.drop)); const nLiq = c.liquidatable.length;
+    L.push({id:'NEAR', sev: c.liquidatable.length ? 'crit' : 'warn', issue:`${n} position${n>1?'s have':' has'} an estimated liquidation buffer below ${pct(W.near,0)}.`,
+      detail:`Buffers use the API USD price as an oracle proxy.${c.liquidatable.length?` ${c.liquidatable.length} potentially liquidatable, pending oracle confirmation.`:''} The curator cannot force a borrower to repay.`,
+      amount: debt, amtNote:'debt in these positions', response:'Confirm oracle prices and review liquidation readiness.',
+      owner:'Sentora ops', onchain:false, verifyNote:'positions recover only if borrowers repay, add collateral, or are liquidated', fig:{positions:F(n, String(n)), debt:F(debt, usdM(debt)), 'price proxy':F(px, '$'+px.toFixed(4)), 'lowest health factor':F(minHf, minHf.toFixed(3)), 'smallest buffer':F(minBuf, minBuf > 0 ? pct(minBuf) : 'none'), 'potentially liquidatable':F(nLiq, String(nLiq))}}); }
+  if(c.topShare!=null && c.topShare > W.top){
+    L.push({id:'CONC', sev:'warn', issue:`Largest borrower is ${pct(c.topShare)} of market debt, above the ${pct(W.top,0)} watch level.`,
+      detail:'A lower supply cap limits new allocations only; existing exposure is unchanged.',
+      amount: c.top.debt, amtNote:'largest position', response:'Review the market supply cap.',
+      owner:'Curator', onchain:true, verifyNote:'a cap change does not reduce the existing position', fig:{share:F(c.topShare, pct(c.topShare)), debt:F(c.top.debt, usdM(c.top.debt))}}); }
+  const cap = capPerDay(); const lad = stressLadder(cap); const at10 = lad.find(r=>r.d===.10);
+  if(at10 && at10.short > 1) L.push({id:'SHORT', sev:'crit', issue:`A 10% PRIME decline could leave ${usdM(at10.short)} of debt uncovered.`,
+      detail:`Vault share of the shortfall: ${usdM(at10.vshort)}. Assumes PRIME falls straight to that level and listed positions are fully liquidated.`,
+      amount: at10.vshort, amtNote:'vault share of shortfall', response:'Review exposure limits with the stress result.', owner:'Curator', onchain:true, verifyNote:'exposure limits apply to new allocations',
+      fig:{shortfall:F(at10.short, usdM(at10.short)), vault:F(at10.vshort, usdM(at10.vshort))}});
+  if(at10 && at10.days > 1){ const dTxt = isFinite(at10.days) ? `${at10.days.toFixed(1)} days` : 'no sale capacity assumed';
+    L.push({id:'LCAP', sev:'warn', issue:`A 10% PRIME decline could require ${usdM(at10.sellUSD)} in collateral sales.`,
+      detail:`${isFinite(at10.days) ? `About ${dTxt}` : 'Cannot be sold:'} at the assumed sale capacity of ${usdM(cap)} per day (default: 25% of observed 24h volume). Volume does not show executable depth, so this stays an assumption until quotes are on file.`,
+      amount: at10.sellUSD, amtNote:'collateral to sell', response:'Obtain executable quotes to assess sale capacity.', owner:'Sentora ops', onchain:false, verifyNote:'the figure stays an assumption until quotes are on file',
+      fig:{sales:F(at10.sellUSD, usdM(at10.sellUSD)), days:F(at10.days, dTxt), capacity:F(cap, usdM(cap)+'/day')}}); }
+  checks().filter(x=>x.res==='flag').forEach(x=>L.push({id:'DATA-'+checkCode(x.name), sev:'warn', issue:`Data check flagged: ${x.name}.`, detail:`${x.value}. ${x.detail}`, amount:null, amtNote:'',
+      response:'Investigate the source; hold dependent reports.', owner:'Sentora ops', onchain:false, verifyNote:'resolved only when the check passes on a fresh load', fig:{}}));
+  return L;
+}
+const CODES = {'Vault and market data':'SRC','Optional data sets':'OPT','Missing or estimated fields':'FLD','PRIME price: Morpho vs CoinGecko':'PX','PRIME price freshness':'AGE','PRIME NAV reference':'NAV','Vault reconciliation':'VREC','Borrower coverage':'COV'};
+const checkCode = n => CODES[n] || (n.startsWith('Market reconciliation') ? 'MREC'+(n.match(/\((.*)\)/)?'-'+n.match(/\((.*)\)/)[1].slice(-4):'') : n.replace(/[^A-Za-z]/g,'').slice(0,6).toUpperCase());
+// A decision covers the figures it was made on. If the issue text or amount moves by more than 1%, the item goes back to risk.
+const figsOf = a => Object.fromEntries(Object.entries(a.fig||{}).map(([k,v])=>[k,[v[0],v[1]]]));
+// A decision covers the figures it was made on; a move of more than 1% in any of them sends the item back to risk.
+function figChanges(basis, a){
+  if(!basis) return ['no recorded basis'];
+  const out = []; const now = a.fig || {};
+  Object.keys({...basis, ...now}).forEach(k=>{ const o = basis[k], n = now[k]; if(!o || !n){ out.push(k); return; }
+    const same = o[0]===n[0] || (isFinite(o[0]) && isFinite(n[0]) && Math.abs(n[0]-o[0]) <= .01*Math.max(Math.abs(o[0]), 1e-9));
+    if(!same) out.push(`${k} ${o[1]} → ${n[1]}`); });
+  return out;
+}
+const EX = {};      // action state per scenario: EX[scenarioKey][id] = {stage, log:[...]}
+// Can the current data say whether this condition holds? Missing data never counts as the condition clearing.
+function evaluable(id){
+  const c = calcAll();
+  if(['NEAR','CONC','SHORT','LCAP'].includes(id)) return c.haveBor && c.main && c.main.m.price.v!=null && c.main.m.lltv.v!=null ? {ok:true} : {ok:false, why:'borrower positions'};
+  if(id==='UTIL') return c.prime.some(x=>x.util!=null) ? {ok:true} : {ok:false, why:'PRIME market utilization'};
+  if(id==='WLIQ') return c.wliq!=null && c.tvl ? {ok:true} : {ok:false, why:'vault withdrawal liquidity'};
+  if(id.startsWith('DATA-')){ const ch = checks().find(x=>'DATA-'+checkCode(x.name)===id); return ch && ch.res!=='na' ? {ok:true} : {ok:false, why:'the inputs for this check'}; }
+  return {ok:true};
+}
+function actions(){
+  const k = scenKey(); const store = EX[k] = EX[k] || {}; const act = conditions(); const ids = new Set(act.map(a=>a.id)); const now = new Date();
+  act.forEach(a=>{ const st = store[a.id];
+    if(!st) store[a.id] = {stage:'Prepared', log:[{t:now, who:'Sentora ops', text:`Prepared from ${evidence()}`}]};
+    else if(['Closed','Cleared'].includes(st.stage)){ st.stage = 'Prepared'; st.basis = null; st.log.push({t:now, who:'Sentora ops', text:'Condition returned on latest data; reopened for a risk decision'}); }
+    const s2 = store[a.id]; if(s2.gap){ s2.log.push({t:now, who:'Sentora ops', text:`${s2.gap[0].toUpperCase()+s2.gap.slice(1)} available again${s2.stage==='Prepared'?'; awaiting Sentora risk approval':''}`}); } s2.gap = null;
+    const chg = ['Approved','Accepted','Monitoring','Executed'].includes(s2.stage) ? figChanges(s2.basis, a) : [];
+    if(['Approved','Accepted','Monitoring'].includes(s2.stage) && chg.length){
+      s2.log.push({t:now, who:'Sentora ops', text:`Figures changed after the decision (${chg.join('; ')}); returned to Sentora risk for approval`});
+      s2.stage = 'Prepared'; s2.basis = null; }
+    else if(s2.stage==='Executed' && chg.length && !s2.flagged){ s2.flagged = true; s2.log.push({t:now, who:'Sentora ops', text:'Figures changed since execution; verification will use freshly pulled data'}); }
+    s2.rec = a; });
+  Object.entries(store).forEach(([id,st])=>{ if(ids.has(id) || !st.rec || ['Closed','Cleared'].includes(st.stage)) return;
+    const ev = evaluable(id);
+    if(!ev.ok){ if(st.gap !== ev.why){ st.gap = ev.why; st.log.push({t:now, who:'Sentora ops', text:`Cannot confirm the condition: ${ev.why} unavailable. Missing data does not show it cleared, so the item stays open.`}); }
+      if(st.stage==='Approved'){ st.stage = 'Prepared'; st.basis = null; st.log.push({t:now, who:'Sentora ops', text:'Approval suspended: execution is blocked until the data returns and Sentora risk approves again'}); }
+      return; }
+    if(st.gap){ st.log.push({t:now, who:'Sentora ops', text:`${st.gap[0].toUpperCase()+st.gap.slice(1)} available again`}); } st.gap = null;
+    if(['Prepared','Accepted'].includes(st.stage)){ st.stage = 'Cleared'; st.log.push({t:now, who:'Sentora ops', text:'Condition no longer present on latest data'}); }
+    else if(st.stage==='Monitoring'){ st.stage = 'Closed'; st.log.push({t:now, who:'Sentora ops', text:`Condition cleared on ${evidence()}`}); } });
+  const order = {Prepared:0, Approved:1, Executed:2, Accepted:3, Monitoring:4, Closed:5, Cleared:6}, sev = {crit:0, warn:1};
+  return Object.entries(store).filter(([,st])=>st.rec).map(([id,st])=>({...st.rec, stage:st.stage, log:st.log, active:ids.has(id), gap:st.gap}))
+    .sort((a,b)=>order[a.stage]-order[b.stage] || sev[a.sev]-sev[b.sev]);
+}
+const evidence = () => D.source==='live' ? `Morpho API data pulled ${dShort(D.at)}, ${hhmm(D.at)}` : `the ${SNAP_AT} snapshot (live data unavailable)`;
+let BUSY = null;
+async function refreshData(){
+  const prev = structuredClone(D);
+  try{ D.partial = []; await loadLive(); syncM(); return {ok:true}; }
+  catch(e){ Object.keys(D).forEach(k=>delete D[k]); Object.assign(D, prev); return {ok:false, err:e.message}; }
+}
+async function manualRefresh(){
+  if(BUSY) return; BUSY = 'refresh'; render();
+  const r = await refreshData(); BUSY = null; REFRESH_ERR = r.ok ? '' : r.err; render();
+}
+let REFRESH_ERR = '';
+async function step(id, what){
+  const st = EX[scenKey()][id]; if(!st || BUSY) return; const a = st.rec; const now = new Date();
+  if(st.gap && ['approve','accept','execute'].includes(what)) return;     // blocked while required data is missing
+  const basis = figsOf(a);
+  if(what==='approve' && st.stage==='Prepared'){ st.stage = 'Approved'; st.basis = basis; st.log.push({t:now, who:'Sentora risk', text:`Approved on figures from ${evidence()}`}); }
+  if(what==='accept' && st.stage==='Prepared'){ st.stage = 'Accepted'; st.basis = basis; st.log.push({t:now, who:'Sentora risk', text:`Set to monitor on figures from ${evidence()}; no change made`}); }
+  if(what==='execute' && st.stage==='Approved'){ st.stage = 'Executed'; st.flagged = false; st.log.push({t:now, who:a.owner, text: a.onchain ? `Executed on-chain, tx ${short(hex(64))} (simulated)` : 'Completed'}); }
+  if(what==='verify' && st.stage==='Executed'){
+    BUSY = id; render();
+    const r = await refreshData(); BUSY = null; const t = new Date();
+    if(!r.ok){ st.log.push({t, who:'Sentora ops', text:`Verification not completed: data refresh failed (${r.err}). Figures on screen are still from ${evidence()}.`}); }
+    else { const cur = conditions().find(x=>x.id===id); const ev = evaluable(id);
+      if(!cur && !ev.ok){ st.gap = ev.why; st.log.push({t, who:'Sentora ops', text:`Verification not completed: refreshed at ${evidence()}, but ${ev.why} unavailable. Missing data does not show the condition cleared; the item stays executed and unverified.`}); render(); return; }
+      st.stage = cur ? 'Monitoring' : 'Closed'; if(cur){ st.basis = figsOf(cur); }
+      st.log.push({t, who:'Sentora ops', text: cur ? `Verified against ${evidence()}: condition still present, so it stays under monitoring (${a.verifyNote})` : `Verified against ${evidence()}: condition cleared`}); }
+  }
+  render();
+}
+
+/* ================= render: market oversight ================= */
+function capPerDay(){ const v = parseFloat($('#capIn').value); return isFinite(v) && v >= 0 ? v*1e6 : 0; }
+function render(){
+  const c = calcAll(); const ch = checks(); const acts = actions();
+  renderSource(); renderCards(c, ch, acts); renderAttn(acts); renderMarket(c); renderVault(c); renderBorrowers(c); renderChecks(ch); renderActions(acts); renderCase();
+  $('#cChk').textContent = ch.filter(x=>x.res==='flag').length;
+  $('#cAct').textContent = acts.filter(a=>['Prepared','Approved','Executed'].includes(a.stage)).length;
+  $('#scNote').textContent = isLiveScen() ? '' : 'Applied to Overview, Vault, Borrowers, and Action Tracker.';
+  $('#scenBar').classList.toggle('on', !isLiveScen());
+}
+function renderSource(){
+  const live = D.source==='live';
+  ['mktTag','vTag','bTag','posTag'].forEach(id=>{ const t = $('#'+id); t.className = 'tag ' + (live?'live':'snap'); t.textContent = live ? (id==='posTag'?'Observed prices':'Observed') : 'Snapshot + estimates'; });
+  $('#srcBox').innerHTML = live
+    ? `Market data <b>Observed, Morpho API</b><br>Pulled ${hhmm(D.at)} · ${dShort(D.at)}` + (D.partial.length ? `<br><span class="warnline" title="${esc(D.partial.join(' | '))}">${D.partial.length} optional data set${D.partial.length>1?'s':''} unavailable (hover)</span>` : '')
+    : `Market data <b>Snapshot, ${SNAP_AT}</b><br><span class="warnline">Morpho API error: ${esc(D.err||'unknown')}</span>`;
+}
+function renderCards(c, ch, acts){
+  const m = c.main; const flags = ch.filter(x=>x.res==='flag').length;
+  const open = acts.filter(a=>['Prepared','Approved','Executed'].includes(a.stage));
+  const nearDebt = c.near.reduce((a,b)=>a+b.debt,0);
+  const wl = c.wliq!=null && c.tvl ? c.wliq/c.tvl : null;
+  const cards = [
+    ['Vault Assets', usdM(c.tvl), `${c.tvl?pct(c.primeVS/c.tvl,0):'n/a'} lent against PRIME · ${usdM(c.idle)} idle`, 'vault', null],
+    ['Withdrawal Capacity', usdM(c.wliq) + (c.wliqEst?'<sup class="est">est</sup>':''), wl!=null ? `${pct(wl)} of vault assets · ${usdM(c.freeable)} more available to deallocate` : 'not observed in snapshot', 'vault', wl==null ? null : wl < W.wliq ? 'warn' : 'good'],
+    ['PRIME Market Utilization', m ? pct(m.util) : 'n/a', m ? `borrow APY ${pct(m.m.apy.v,2)} · liquidity ${usdM(m.lq)}` : '', 'vault', m && m.util!=null ? (m.util >= W.util ? 'warn' : 'good') : null],
+    ['Borrower Health', c.haveBor ? `${c.near.length} low buffer` : 'n/a', c.haveBor ? `${usdM(nearDebt)} of debt with a liquidation buffer below ${pct(W.near,0)}${c.liquidatable.length?` · ${c.liquidatable.length} potentially liquidatable`:''}` : 'borrower positions not loaded', 'borrowers', c.haveBor ? (c.liquidatable.length ? 'crit' : c.near.length ? 'warn' : 'good') : null],
+    ['Data Checks', flags ? `${flags} flagged` : 'No flags', `${ch.filter(x=>x.res==='pass').length} pass · ${ch.filter(x=>x.res==='na').length} not run`, 'checks', flags ? 'warn' : 'good'],
+    ['Open Actions', String(open.length), `${acts.filter(a=>['Accepted','Monitoring'].includes(a.stage)).length} monitoring · ${acts.filter(a=>['Closed','Cleared'].includes(a.stage)).length} closed`, 'actions', open.length ? 'warn' : 'good']
+  ];
+  $('#cards').innerHTML = cards.map(([l,v,s,tab,st])=>`<div class="q" data-go="${tab}"><span class="l">${l}</span><span class="v">${v} ${st?pill(st, st==='good'?'OK':st==='warn'?'Watch':'Act'):''}</span><span class="s">${s}</span></div>`).join('');
+}
+function renderAttn(acts){
+  const open = acts.filter(a=>['Prepared','Approved','Executed'].includes(a.stage)).slice(0,6);
+  $('#attn').innerHTML = open.length ? open.map(a=>`<li>${pill(a.sev, a.sev==='crit'?'Act':'Watch')}<span>${esc(a.issue)}</span><span class="d"><a href="#" data-go="actions">${esc(stageLabel(a.stage))}</a></span></li>`).join('')
+    : `<li>${pill('good','Clear')}<span>No open items${isLiveScen()?'':' in this scenario'}.</span></li>`;
+}
+function renderMarket(c){
+  $('#srcRow').innerHTML = [SRC.review, SRC.kucoin, SRC.rwa, SRC.cg].map(link).join(' · ');
+  $('#mktTbl tbody').innerHTML = c.prime.map(x=>{ const m = x.m;
+    return `<tr><td>${esc(m.coll)} / ${esc(m.loan)}${m.id?`<br><span class="note m" title="${esc(m.id)}">${short(m.id)}</span>`:''}${m.oracle?`<br><span class="note">Oracle <a href="https://etherscan.io/address/${m.oracle}" target="_blank" rel="noopener">${short(m.oracle)}</a></span>`:''}</td>
+      <td class="n">${show(m.lltv,pct(m.lltv.v))}</td><td class="n">${show(m.apy,pct(m.apy.v,2))}</td><td class="n">${SC.drain?'100.0%<sup class="est">scenario</sup>':show(m.util,pct(m.util.v))}</td><td class="n">${SC.drain?'$0.00M<sup class="est">scenario</sup>':show(m.liqM,usdM(m.liqM.v))}</td><td class="n">${show(m.borrow,usdM(m.borrow.v))}</td>
+      <td class="n">${show(m.price,'$'+(m.price.v||0).toFixed(4))}${SC.shock?`<br><span class="note">scenario $${(m.price.v*(1-SC.shock)).toFixed(4)}</span>`:''}</td><td class="n"><span title="Observed: ${esc(NAV.why)}">$${NAV.v.toFixed(2)}</span><br><span class="note">Oct 5</span></td><td class="n">${show(D.cg.vol,usdM(D.cg.vol.v))}</td></tr>`; }).join('');
+}
+function renderVault(c){
+  $('#allocTbl tbody').innerHTML = c.ms.map(x=>{ const m = x.m;
+    return `<tr><td>${esc(m.coll)} / ${esc(m.loan)}${m.id?` <span class="note m" title="${esc(m.id)}">${short(m.id)}</span>`:''}</td><td class="n">${show(m.vaultSupply,usdM(x.vs))}</td><td class="n">${pct(x.share)}</td>
+      <td class="n">${x.util==null?'<span class="na">n/a</span>':pct(x.util)+(SC.drain?'<sup class="est">scenario</sup>':'')}</td><td class="n">${x.lq==null?'<span class="na">n/a</span>':usdM(x.lq)}</td><td class="n">${x.free==null?'<span class="na">n/a</span>':usdM(x.free)}</td>
+      <td class="n">${x.vshare==null?'<span class="na" title="Market supply total not observed">n/a</span>':pct(x.vshare)+(x.supEst?'<sup class="est">est</sup>':'')}</td></tr>`; }).join('')
+    + `<tr><td>Idle PYUSD in the vault</td><td class="n">${show(D.idle,usdM(c.idle))}</td><td class="n">${c.tvl?pct(c.idle/c.tvl):'n/a'}</td><td></td><td></td><td class="n">${usdM(c.idle)}<br><span class="note">already idle</span></td><td></td></tr>`
+    + `<tr class="total"><td>Total (positions + idle)</td><td class="n">${usdM(c.mapped)}</td><td class="n">${c.tvl?pct(c.mapped/c.tvl):''}</td><td colspan="2" class="note">vault total assets ${show(D.tvl,usdM(c.tvl))}</td><td class="n" title="Idle plus available to deallocate">${usdM(c.freeable + c.idle)}<br><span class="note">idle + deallocatable</span></td><td></td></tr>`;
+  const rows = [
+    ['Withdrawable now', c.wliqEst ? 'scenario: idle PYUSD only, since market liquidity is drained' : 'API-reported vault liquidity', c.wliq==null ? '<span class="na">n/a</span>' : usdM(c.wliq) + (c.wliqEst?'<sup class="est">est</sup>':''), D.liq],
+    ['Idle PYUSD in the vault', 'held in the vault, not lent', usdM(c.idle), D.idle],
+    ['Available to deallocate', 'needs an allocator action; limited by the vault\'s supply in each market and that market\'s liquidity', usdM(c.freeable), null],
+    ['Vault total assets', '', usdM(c.tvl), D.tvl],
+    ['Withdrawable as share of assets', `watch level ${pct(W.wliq,0)}`, c.wliq!=null && c.tvl ? pct(c.wliq/c.tvl) + ' ' + (c.wliq/c.tvl < W.wliq ? pill('warn','Below') : pill('good','Above')) : 'n/a', null]
+  ];
+  $('#wTbl tbody').innerHTML = rows.map(r=>`<tr><td>${r[0]}</td><td class="note">${esc(r[1])}</td><td class="n"><b>${r[2]}</b></td></tr>`).join('');
+  $('#chgLead').innerHTML = `Live values compared with the last recorded check (${BASE.label}). Review thresholds: assets ±${pct(W.chg.tvl,0)}, idle ±${pct(W.chg.idle,0)}, PRIME supply ±${pct(W.chg.supply,0)}, utilization ±${(W.chg.util*100).toFixed(0)} pts, price ±${pct(W.chg.price,0)}.`;
+  if(D.source!=='live' || !c.main){ $('#chgTbl tbody').innerHTML = `<tr><td colspan="5" class="note">Live data is needed to compare with the last check; the page is showing that check's snapshot.</td></tr>`; return; }
+  const m = c.main.m;
+  const items = [
+    ['Vault total assets', BASE.tvl, c.tvl, 'rel', W.chg.tvl, usdM],
+    ['Idle PYUSD', BASE.idle, c.idle, 'rel', W.chg.idle, usdM],
+    ['Vault supply to PRIME markets', BASE.supply, c.primeVS, 'rel', W.chg.supply, usdM],
+    ['PRIME market utilization', BASE.util, m.util.v, 'abs', W.chg.util, v=>pct(v)],
+    ['PRIME price', BASE.price, m.price.v, 'rel', W.chg.price, v=>'$'+v.toFixed(4)]
+  ];
+  $('#chgTbl tbody').innerHTML = items.map(([n,b,v,kind,th,f])=>{ if(v==null) return `<tr><td>${n}</td><td class="n">${f(b)}</td><td class="n"><span class="na">n/a</span></td><td></td><td>${pill('neutral','Not compared')}</td></tr>`;
+    const ch = kind==='rel' ? (v-b)/b : v-b; const big = Math.abs(ch) >= th;
+    return `<tr><td>${n}</td><td class="n">${f(b)}</td><td class="n">${f(v)}</td><td class="n">${kind==='rel'?spct(ch):pts(ch)}</td><td>${big?pill('warn','Review'):pill('good','Within range')}</td></tr>`; }).join('');
+}
+function renderBorrowers(c){
+  if(!c.haveBor){
+    $('#borTbl tbody').innerHTML = `<tr><td colspan="7" class="note">${D.source==='live' ? 'Borrower positions are not available from the API right now. Market totals are shown on the Overview.' : 'Borrower positions are available with live data only.'}</td></tr>`;
+  } else {
+    $('#borTbl tbody').innerHTML = c.bor.map(b=>{ const st = b.hf!=null && b.hf < 1 ? `<span title="Estimated health factor below 1.00 using the API USD price as an oracle proxy. Unconfirmed until checked against the market oracle.">${pill('crit','Potentially liquidatable')}</span>` : b.drop!=null && b.drop < W.near ? `<span title="Estimated PRIME price drop to liquidation is below the ${pct(W.near,0)} watch level. Uses the API USD price as an oracle proxy.">${pill('warn','Low liquidation buffer')}</span>` : pill('good','OK');
+      return `<tr><td class="m">${b.addr?`<a href="https://etherscan.io/address/${b.addr}" target="_blank" rel="noopener">${short(b.addr)}</a>`:'n/a'}</td><td class="n">${usdM(b.debt)}</td><td class="n">${c.debtBase?pct(b.debt/c.debtBase):'n/a'}</td><td class="n">${usdM(b.coll)}</td><td class="n" title="Calculated: collateral × price × LLTV ÷ debt">${b.hf!=null?b.hf.toFixed(3):'n/a'}</td><td class="n">${b.drop!=null?(b.drop>0?pct(b.drop):'already past'):'n/a'}</td><td>${st}</td></tr>`; }).join('')
+      + `<tr class="total"><td>${c.bor.length} largest positions</td><td class="n">${usdM(c.listed)}</td><td class="n">${c.mBorrow?pct(c.listed/c.mBorrow):''}</td><td colspan="4" class="note">${SC.shock?`at the scenario price (PRIME down ${pct(SC.shock,0)})`:'at the live price'}</td></tr>`;
+  }
+  const m = c.main && c.main.m;
+  const kv = [
+    ['Positions listed', c.haveBor ? `${c.bor.length} largest by debt` : 'not available'],
+    ['Coverage', c.haveBor && c.mBorrow ? `${pct(c.listed/c.mBorrow,0)} of ${usdM(c.mBorrow)} borrowed` : 'n/a'],
+    ['Largest position', c.topShare!=null ? `${pct(c.topShare)} of market debt ${c.topShare > W.top ? pill('warn','Above '+pct(W.top,0)) : pill('good','Within '+pct(W.top,0))}` : 'n/a'],
+    ['Largest five', c.top5!=null && c.haveBor ? `${pct(c.top5)} of market debt` : 'n/a'],
+    ['Aggregate market LTV', c.aggLtv!=null ? `${pct(c.aggLtv)} <span class="note">borrowed ÷ collateral${SC.shock?', scenario price':''}</span>` : 'n/a'],
+    ['Liquidation incentive', m && m.lltv.v!=null ? `${pct(LIF(m.lltv.v)-1,2)} <span class="note">calculated from the ${pct(m.lltv.v,1)} LLTV</span>` : 'n/a']
+  ];
+  $('#concKv').innerHTML = kv.map(([k,v])=>`<span class="k">${k}</span><span>${v}</span>`).join('');
+  const cap = capPerDay(); const lad = stressLadder(cap);
+  $('#capNote').innerHTML = `Default: 25% of observed PRIME 24h volume (${show(D.cg.vol,usdM(D.cg.vol.v))}). <span class="tag sim">assumption</span>`;
+  $('#stTbl tbody').innerHTML = c.haveBor ? lad.map(r=>`<tr${SC.shock && Math.abs(r.d-SC.shock)<1e-9?' class="cur"':''}><td class="n">${r.d?'−'+pct(r.d,0):'Live'}</td><td class="n">${r.n}</td><td class="n">${usdM(r.debt)}</td><td class="n">${r.sell?`${usdM(r.sellUSD)}<br><span class="note">${tok(r.sell,'PRIME')}</span>`:'$0.00M'}</td><td class="n">${r.sellUSD ? (isFinite(r.days) ? r.days.toFixed(1) : 'no capacity') : '0'}</td><td class="n">${r.short>1?`<b>${usdM(r.short)}</b>`:'$0.00M'}</td><td class="n">${r.vshort>1?usdM(r.vshort):'$0.00M'}</td></tr>`).join('')
+    : `<tr><td colspan="7" class="note">Needs borrower positions. With market totals only, the aggregate LTV above is the best available indicator.</td></tr>`;
+}
+function renderChecks(ch){
+  $('#chkTbl tbody').innerHTML = ch.map(x=>`<tr><td>${esc(x.name)}</td><td>${x.res==='pass'?pill('good','Pass'):x.res==='flag'?pill('warn','Flag'):pill('neutral','Not run')}</td><td class="nw">${esc(x.value)}</td><td class="note">${esc(x.detail)}</td><td class="note">${esc(x.src)}</td></tr>`).join('');
+  const wl = [
+    ['PRIME market utilization', `review at ${pct(W.util,0)} or above (rate model target 90%)`],
+    ['Vault withdrawal capacity', `review below ${pct(W.wliq,0)} of vault assets`],
+    ['Borrower near liquidation', `PRIME price drop to liquidation under ${pct(W.near,0)}`],
+    ['Borrower concentration', `largest position above ${pct(W.top,0)} of market debt`],
+    ['Price stress', 'shortfall or more than one day of liquidation sales if PRIME falls 10%'],
+    ['Reconciliation tolerance', pct(W.recon,1)],
+    ['Price checks', `sources more than ${pct(W.dev,0)} apart; price older than ${W.ageMin} minutes; NAV reference older than ${W.navDays} days`],
+    ['Borrower coverage', `listed positions under ${pct(W.coverage,0)} of market debt`]
+  ];
+  $('#wlTbl tbody').innerHTML = wl.map(r=>`<tr><td>${r[0]}</td><td class="note">${esc(r[1])}</td></tr>`).join('');
+}
+const stageLabel = s => ({Prepared:'Awaiting approval', Approved:'Approved, awaiting execution', Executed:'Executed, awaiting verification', Accepted:'Monitoring', Monitoring:'Verified, monitoring', Closed:'Closed', Cleared:'Cleared before action'})[s] || s;
+function renderActions(acts){
+  $('#actTbl tbody').innerHTML = acts.length ? acts.map(a=>{
+    const sp = (a.stage==='Prepared' ? pill(a.sev, stageLabel(a.stage)) : ['Closed','Cleared'].includes(a.stage) ? pill('good', stageLabel(a.stage)) : pill('info', stageLabel(a.stage)))
+      + (a.gap ? `<div style="margin-top:4px">${pill('neutral','Unverified: data missing')}</div><div class="note">${esc(a.gap)} unavailable</div>` : '');
+    const btn = (w, label, dis, tip) => `<button class="btn sm${w==='accept'?' ghost':''}" data-step="${w}" data-id="${a.id}"${dis?' disabled':''}${tip?` title="${esc(tip)}"`:''}>${esc(label)}</button>`;
+    const blk = a.gap ? `Blocked: ${a.gap} unavailable` : '';
+    const next = a.stage==='Prepared' ? `${btn('approve','Approve',!!blk,blk||'Sentora risk approves the proposed response')} ${btn('accept','Monitor',!!blk,blk||'Sentora risk accepts the condition and monitors it; no change made')}`
+      : a.stage==='Approved' ? btn('execute', 'Execute', !!blk, blk||`Carried out by ${a.owner}`)
+      : a.stage==='Executed' ? (BUSY===a.id ? btn('verify', 'Refreshing...', true) : btn('verify', 'Verify', false, 'Sentora ops refreshes the supporting data, then checks the condition')) : '';
+    const log = `<details class="log"><summary>Log (${a.log.length})</summary><ul>${a.log.map(l=>`<li><span class="t">${hhmm(l.t)}</span><b>${esc(l.who)}:</b> ${esc(l.text)}</li>`).join('')}</ul></details>`;
+    return `<tr><td class="m">${a.id}</td><td style="min-width:220px">${esc(a.issue)}${a.detail?`<details class="log"><summary>Details</summary><div class="note" style="margin-top:4px">${esc(a.detail)}</div></details>`:''}</td><td class="n amt">${a.amount!=null?`<b>${usdM(a.amount)}</b><br><span class="note">${esc(a.amtNote)}</span>`:''}</td><td class="note" style="min-width:180px">${esc(a.response)}</td>
+      <td class="nw">${esc(a.owner)}</td><td>${sp}</td><td style="min-width:190px">${next}${log}</td></tr>`;
+  }).join('') : `<tr><td colspan="7">${pill('good','Clear')} No items. Try a market scenario above.</td></tr>`;
+  $('#evid').innerHTML = `Evidence on screen: ${esc(evidence())}. <button class="btn ghost sm" data-refresh="1"${BUSY?' disabled':''}>${BUSY==='refresh'?'Refreshing...':'Refresh data'}</button>${REFRESH_ERR?` <span class="warnline">Refresh failed: ${esc(REFRESH_ERR)}</span>`:''}`;
+  $('#actNote').textContent = isLiveScen() ? 'Simulated workflow. Verification refreshes the supporting data.'
+    : 'Scenario rehearsal, kept separate from live items. Verification refreshes the supporting data.';
+}
+
+/* ================= case study: one borrower position ================= */
+const M = {};
+function syncM(){
+  const c = calcAll(); const m = c.main ? c.main.m : null;
+  const pick = (f, fb) => f && f.v!=null ? f : fb;
+  M.price = pick(m && m.price, fv(BASE.price,'obs',`RWA.xyz token price, ${SNAP_AT}`));
+  M.borrow = pick(m && m.apy, fv(.065,'est','Assumed 6.5% borrow APY; live rate unavailable'));
+  M.lltv = pick(m && m.lltv, fv(.86,'est','Assumed 86% liquidation LTV; live market parameter unavailable'));
+  M.util = pick(m && m.util, fv(BASE.util,'obs',`Morpho API utilization, ${SNAP_AT}`));
+  M.vol = D.cg.vol;
+  M.yield = fv(0.0049*365/30,'est','Annualized from the +0.49% 30-day NAV change on RWA.xyz (Oct 5, 2026), net of the 0.50% management fee');
+}
+const P = (key, text) => show(M[key], text);
+const POLICY = {target:.62, call:.68, hard:.75, minBuffer:.15, carryReview:.0075, exitDays:5};
+let S = null;
+function seed(){ S = {units: Math.round(10.0e6 / M.price.v), debt: 6.0e6, cash: 1.5e6, drop: 0, disc: .01}; }
 const maxWithdrawUSD = (coll, debt) => Math.max(0, coll - debt / POLICY.target);
-// Scenario mode: any stress (impairment, rate, days forward) runs on a copy of the book.
-// Actions taken in a scenario change only that copy; returning to live restores today's book.
-const isLive = st => st.imp===0 && st.days===0 && (st.rate==null || Math.abs(st.rate - M.borrow.v) < 5e-5);
-const BOOK_KEYS = ['units','debt','cash','line','rec','events','ex','seq','principal'];
-function setStress(next){
-  const wasLive = isLive(S.stress), nowLive = isLive(next);
-  if(wasLive && !nowLive){ const b = {}; BOOK_KEYS.forEach(k=>b[k] = S[k]); S.book = structuredClone(b); }
-  if(!wasLive && nowLive && S.book){ Object.assign(S, structuredClone(S.book)); S.book = null; }
-  S.stress = next; render();
+// Position at a given PRIME price decline (0 = live). Debt and borrow rate are live.
+function calcCase(drop){
+  const price = M.price.v * (1 - drop), r = M.borrow.v, debt = S.debt, coll = S.units * price;
+  const ltv = debt / coll, lltv = M.lltv.v, hf = lltv * coll / debt, buffer = 1 - ltv / lltv;
+  const y = M.yield.v, income = coll * y, cost = debt * r, net = income - cost;
+  return {price, r, debt, coll, ltv, lltv, hf, buffer, y, income, cost, net, breakeven: y*coll/debt,
+    addColl: Math.max(0, debt/POLICY.target - coll), repay: Math.max(0, debt - POLICY.target*coll)};
 }
-function rateNow(){ return S.stress.rate!=null ? S.stress.rate : M.borrow.v; }
-function calc(){
-  const price = M.price.v * (1 - S.stress.imp);
-  const r = rateNow();
-  const debt = S.debt * Math.pow(1+r, S.stress.days/365);
-  const coll = S.units * price;
-  const ltv = debt / coll;
-  const lltv = M.lltv.v;
-  const hf = lltv * coll / debt;
-  const buffer = 1 - ltv / lltv;                              // PRIME price fall to liquidation
-  const y = M.yield.v;
-  const income = coll * y, cost = debt * r, net = income - cost, equity = coll - debt;
-  const breakeven = y * coll / debt;
-  const addColl = Math.max(0, debt/POLICY.target - coll);
-  const repay = Math.max(0, debt - POLICY.target*coll);
-  return {price, r, debt, coll, ltv, lltv, hf, buffer, y, income, cost, net, equity, roe: equity>0 ? net/equity : null, breakeven, addColl, repay};
-}
-// AdaptiveCurveIRM: rate = rT * curve(u); above target curve rises linearly to 4x at 100%; below target falls to 0.25x... (k_d = 4)
+// AdaptiveCurveIRM (k_d = 4, target 90%), applied to the per-second rate.
 function curve(u){ const kd = 4, ut = .9; if(u >= ut){ const e = (u-ut)/(1-ut); return 1 + (kd-1)*e; } const e = (u-ut)/ut; return 1 + (1-1/kd)*e; }
-const apyToApr = a => Math.log(1 + a);       // Morpho rates are per-second; APY = exp(rate × seconds per year) - 1
-const aprToApy = r => Math.exp(r) - 1;
+const apyToApr = a => Math.log(1 + a), aprToApy = r => Math.exp(r) - 1;
 function aprAtTarget(){ return apyToApr(M.borrow.v) / curve(M.util.v); }
-function rateAtTarget(){ return aprToApy(aprAtTarget()); }                 // as APY
 const apyAt = (u, mult=1) => aprToApy(aprAtTarget() * mult * curve(u));
-
-/* ================= reconciliation ================= */
-function recon(){
-  const c = calc();
-  const rows = [];
-  const uDiff = S.units - S.rec.units;
-  rows.push({item:'PRIME collateral', rec:tok(S.rec.units,'PRIME'), chain:tok(S.units,'PRIME'), diff:uDiff*M.price.v, diffTxt: uDiff ? tok(uDiff,'PRIME') : '0', ok: Math.abs(uDiff*M.price.v) <= 1000,
-    why: uDiff ? 'Client collateral top-up confirmed on-chain, not yet booked' : ''});
-  const dDiff = S.debt - S.rec.debt;
-  rows.push({item:'PYUSD debt incl. accrued interest', rec:usd(S.rec.debt), chain:usd(S.debt), diff:dDiff, diffTxt:susd(dDiff), ok: Math.abs(dDiff) <= 1000,
-    why: Math.abs(dDiff) > 1000 ? `Interest booked through ${dShort(S.rec.bookedThrough)} at ${pct(S.rec.rate,2)}; on-chain rate is ${pct(M.borrow.v,2)}` : ''});
-  rows.push({item:'Borrow rate used for accrual', rec:pct(S.rec.rate,2), chain:P('borrow',pct(M.borrow.v,2)), diff:0, diffTxt:bp(M.borrow.v - S.rec.rate), ok: Math.abs(M.borrow.v - S.rec.rate) < .0005, info:true,
-    why: Math.abs(M.borrow.v - S.rec.rate) >= .0005 ? 'Record rate is stale; update the expected rate in the booking model' : ''});
-  return rows;
-}
-
-/* ================= exit ladder ================= */
-function ladder(){
-  const c = calc(); const price = c.price * (1 - S.stress.disc);
+function ladder(c){
+  const price = c.price * (1 - S.disc);
   const useCash = $('#rCash').checked, useSec = $('#rSec').checked, useRed = $('#rRed').checked, useLine = $('#rLine').checked;
   const secCap = useSec ? (M.vol.v||0) * Math.max(0, Math.min(100, +$('#secPct').value||0))/100 : 0;
   const redCap = useRed ? Math.max(0, +$('#redCap').value||0)*1e6 : 0;
   let debt = c.debt, units = S.units, cash = useCash ? S.cash : 0, line = useLine ? Math.max(0, +$('#lineAmt').value||0)*1e6 : 0;
-  const rows = []; let cost = 0, day = 0, stuck = false;
-  const dailyRate = Math.pow(1+c.r, 1/365) - 1;
-  while(debt > 1 && day < 120){
+  let cost = 0, day = 0, stuck = false; const dailyRate = Math.pow(1+c.r, 1/365) - 1;
+  while(debt > 1 && day < 365){
     day++;
-    let ext = 0;
-    const fromCash = Math.min(cash + line, debt); ext = fromCash; const cashUse = Math.min(cash, fromCash); cash -= cashUse; line -= (fromCash - cashUse); debt -= fromCash;
-    let wUnits = 0, proceeds = 0;
-    if(debt > 1){
-      const coll = units * c.price;
-      const sellCap = secCap + redCap;
-      const needUSD = debt / (1 - S.stress.disc);                           // gross PRIME value needed to clear the debt
-      const wUSD = Math.min(maxWithdrawUSD(coll, debt), sellCap, needUSD);
-      wUnits = wUSD / c.price; units -= wUnits; proceeds = wUnits * price; cost += wUnits * (c.price - price);
-      debt -= Math.min(debt, proceeds);
-    }
+    const fromCash = Math.min(cash + line, debt); const cashUse = Math.min(cash, fromCash); cash -= cashUse; line -= (fromCash - cashUse); debt -= fromCash;
+    let proceeds = 0;
+    if(debt > 1){ const coll = units * c.price; const wUSD = Math.min(maxWithdrawUSD(coll, debt), secCap + redCap, debt / (1 - S.disc));
+      const wUnits = wUSD / c.price; units -= wUnits; proceeds = wUnits * price; cost += wUnits * (c.price - price); debt -= Math.min(debt, proceeds); }
     debt *= (1 + dailyRate); cost += debt * dailyRate;
-    rows.push({day, ext, wUnits, proceeds, repaid: ext + proceeds, debt: debt < 1 ? 0 : debt, ltv: debt < 1 ? 0 : debt / (units*c.price)});
-    if(ext + proceeds < 1){ stuck = true; break; }
+    if(fromCash + proceeds < 1){ stuck = true; break; }
   }
-  return {rows, days: debt <= 1 ? day : null, stuck, released: units, cost, secCap, redCap};
+  return {days: debt <= 1 ? day : null, stuck, released: units, cost, secCap, redCap};
 }
-
-/* ================= action queue ================= */
-function conditions(){
-  const c = calc(); const L = []; const lad = ladder();
-  if(c.ltv >= POLICY.hard) L.push({id:'ACT-HARD', sev:'crit', issue:`Hard limit breached: LTV ${pct(c.ltv)} vs ${pct(POLICY.hard,0)} limit`, amount:c.repay, amtNote:`repay ${usd(c.repay)} PYUSD to reach ${pct(POLICY.target,0)}`,
-    owner:'Sentora ops + client treasury', deadline:bizDay(0,16,0), opts:['repay','post'], hint:true});
-  else if(c.ltv >= POLICY.call) L.push({id:'ACT-CALL', sev:'warn', issue:`Margin call: LTV ${pct(c.ltv)} above ${pct(POLICY.call,0)} call level`, amount:Math.min(c.addColl, c.repay), amtNote:`post ${usd(c.addColl)} of PRIME or repay ${usd(c.repay)} PYUSD`,
-    owner:'Client treasury', deadline:bizDay(1,12,0), opts:['post','repay'], hint:true});
-  if(c.buffer < POLICY.minBuffer) L.push({id:'ACT-BUF', sev:'crit', issue:`Liquidation buffer ${pct(c.buffer)} below ${pct(POLICY.minBuffer,0)} minimum`, amount:c.repay, amtNote:'PRIME price fall to liquidation', owner:'Sentora risk', deadline:bizDay(0,16,0), opts:['repay','post'], hint:true});
-  if(c.breakeven - c.r < POLICY.carryReview) L.push({id:'ACT-CARRY', sev: c.net < 0 ? 'crit' : 'warn', issue:`Financing review: borrow APY ${pct(c.r,2)} vs breakeven ${pct(c.breakeven,2)} (${bp(c.breakeven - c.r)} cushion)`, amount:Math.abs(c.net), amtNote: c.net<0 ? 'annual negative carry' : 'annual net carry at risk',
-    owner:'Sentora risk + client coverage', deadline:bizDay(5,12,0), opts:['partial','accept']});
-  recon().filter(r=>!r.ok && !r.info).forEach(r=>{
-    if(r.item.startsWith('PRIME')) L.push({id:'ACT-RECC', sev:'warn', issue:'Collateral top-up not booked', amount:Math.abs(r.diff), amtNote:r.diffTxt, owner:'Sentora ops (reconciliation)', deadline:bizDay(0,17,0), opts:['bookColl']});
-    else L.push({id:'ACT-RECD', sev:'warn', issue:'Accrued interest not booked at the on-chain rate', amount:Math.abs(r.diff), amtNote:r.diffTxt, owner:'Sentora ops (reconciliation)', deadline:bizDay(0,17,0), opts:['bookInt']});
-  });
-  if(!lad.days || lad.days > POLICY.exitDays){
-    const covered = lad.rows.slice(0, POLICY.exitDays).reduce((a,r)=>a+r.repaid,0);
-    L.push({id:'ACT-EXIT', sev:'warn', issue: lad.days ? `Full exit takes ${lad.days} days with selected routes and assumed sale capacity (policy: ${POLICY.exitDays})` : 'Exit stalls with selected routes: collateral cannot be withdrawn without breaching the 62% target',
-      amount:Math.max(0, c.debt - covered), amtNote:`debt not repayable within ${POLICY.exitDays} days`, owner:'Sentora ops', deadline:bizDay(3,12,0), opts:['line','plan']});
-  }
+function caseResponse(c){
+  const L = [];   // [pill class, pill label, text]
+  if(c.ltv >= POLICY.hard) L.push(['crit','Approval required', `LTV ${pct(c.ltv)} breaches the ${pct(POLICY.hard,0)} hard limit. Escalate to risk for approval to reduce leverage.`]);
+  else if(c.ltv >= POLICY.call) L.push(['warn','Approval required', `LTV ${pct(c.ltv)} is above the ${pct(POLICY.call,0)} call level. Request risk approval for a collateral call to restore ${pct(POLICY.target,0)}.`]);
+  else if(c.ltv > POLICY.target) L.push(['info','Review', `LTV ${pct(c.ltv)} is above the ${pct(POLICY.target,0)} target but below the call level. Monitor; no call yet.`]);
+  else L.push(['good','No action', `LTV ${pct(c.ltv)} is within the ${pct(POLICY.target,0)} target.`]);
+  L.push(c.buffer < POLICY.minBuffer ? ['warn','Review required', `Estimated liquidation buffer ${c.buffer > 0 ? pct(c.buffer) : 'exhausted'} is below the ${pct(POLICY.minBuffer,0)} minimum (API price used as an oracle proxy).`]
+    : ['good','Within limit', `Estimated liquidation buffer ${pct(c.buffer)} is above the ${pct(POLICY.minBuffer,0)} minimum.`]);
+  if(!c.repay) L.push(['good','Funded', 'No repayment needed to stay at the target.']);
+  else if(S.cash >= c.repay) L.push(['good','Funded', `Client PYUSD on hand (${usd(S.cash)}) covers the ${usd(c.repay)} repayment.`]);
+  else L.push(['crit','Shortfall', `Client PYUSD on hand is ${usd(S.cash)} against ${usd(c.repay)} needed. The remaining ${usd(c.repay - S.cash)} requires more PRIME collateral, a funding line, or PRIME sales.`]);
+  const cush = c.breakeven - c.r;
+  L.push(cush < POLICY.carryReview ? ['warn','Review required', `Borrow APY ${pct(c.r,2)} vs breakeven ${pct(c.breakeven,2)}: only ${bp(cush).replace('+','')} of cushion (review below ${bp(POLICY.carryReview).replace('+','')}).`]
+    : ['neutral','Information', `Borrow APY ${pct(c.r,2)} vs breakeven ${pct(c.breakeven,2)}: ${bp(cush).replace('+','')} cushion.`]);
   return L;
 }
-const OPT = {
-  post:{label:'Client posts PRIME', kind:'apply'}, repay:{label:'Client repays from PYUSD on hand', kind:'apply'}, partial:{label:'Repay $1M to cut funding cost', kind:'apply'}, accept:{label:'Accept and monitor (documented)', kind:'accept'},
-  bookColl:{label:'Book collateral top-up', kind:'apply'}, bookInt:{label:'Book accrued interest at on-chain rate', kind:'apply'},
-  line:{label:'Arrange $3M outside PYUSD line', kind:'apply'}, plan:{label:'Document staged exit plan with client', kind:'accept'}
-};
-function applyOpt(id, opt){
-  const c = calc(); const now = new Date(); let note = '';
-  const ev = (text, amt, chain=true, booked=true) => S.events.push({t:now, text, amt, hash: chain ? hex(64) : '', chain, booked});
-  if(opt==='post'){ const u = Math.ceil(c.addColl / c.price); S.units += u; ev('Client posted PRIME collateral', tok(u,'PRIME'), true, false); note = `Client posted ${tok(u,'PRIME')}`; }
-  if(opt==='repay' || opt==='partial'){
-    const want = opt==='partial' ? 1e6 : c.repay; const amt = Math.min(want, S.cash);
-    if(amt < 1){ note = 'No client PYUSD on hand'; }
-    else { S.cash -= amt; const base = amt / Math.pow(1+c.r, S.stress.days/365); S.debt -= base; S.rec.debt -= base; ev('Client repaid PYUSD', usd(amt)); note = `Repaid ${usd(amt)}${amt < want ? ` (client cash covered only part of ${usd(want)})` : ''}`; }
-  }
-  if(opt==='bookColl'){ S.rec.units = S.units; S.events.forEach(e=>{ if(!e.booked) e.booked = true; }); note = 'Top-up booked'; }
-  if(opt==='bookInt'){ S.rec.debt = S.debt; S.rec.rate = M.borrow.v; S.rec.bookedThrough = now; ev(`Interest booked through ${dShort(now)} at ${pct(M.borrow.v,2)}`, '', false, true); note = 'Interest re-accrued at on-chain rate'; }
-  if(opt==='line'){ $('#rLine').checked = true; $('#lineAmt').value = 3; note = '$3M PYUSD line arranged and added to exit routes'; }
-  const st = S.ex[id] || {};
-  if(OPT[opt].kind==='accept') S.ex[id] = {...st, status:'Accepted', note:`${OPT[opt].label}, ${hhmm(now)}`};
-  else S.ex[id] = {...st, status:'Actioned', note:`${note}, ${hhmm(now)}; verifying`};
-  render();
-}
-function actions(){
-  const act = conditions(); const ids = new Set(act.map(a=>a.id)); const now = new Date();
-  act.forEach(a=>{ const st = S.ex[a.id];
-    if(!st || st.status==='Resolved') S.ex[a.id] = {status:'Open', note: st && st.status==='Resolved' ? 'Condition returned' : ''};
-    S.ex[a.id].rec = a; });
-  Object.entries(S.ex).forEach(([id,st])=>{ if(!ids.has(id) && st.status!=='Resolved' && st.rec) S.ex[id] = {...st, status:'Resolved', note:`Verified ${hhmm(now)}: condition cleared${st.note?' after: '+st.note.split(',')[0]:''}`}; });
-  const list = Object.entries(S.ex).filter(([,st])=>st.rec).map(([id,st])=>({...st.rec, status:st.status, note:st.note}));
-  const order = {Open:0, Actioned:1, Accepted:2, Resolved:3}, sev = {crit:0, warn:1};
-  return list.sort((a,b)=>order[a.status]-order[b.status] || sev[a.sev]-sev[b.sev]);
-}
-
-/* ================= render ================= */
-function render(){
-  const scen = !isLive(S.stress); const bn = $('#scenBanner');
-  bn.style.display = scen ? 'block' : 'none';
-  if(scen) bn.innerHTML = `<b>Scenario mode.</b> Figures reflect the stress inputs${S.stress.days?` and ${S.stress.days} days forward`:''}. Actions taken now change the scenario only; <a href="#" data-preset="live">Reset to live</a> discards them and restores today's book.`;
-  const c = calc(); const acts = actions(); const lad = ladder();
-  renderSource(); renderCards(c, acts, lad); renderRepo(c); renderFacts(); renderMarket(); renderRisk(c); renderBorrowers(c); renderCarry(c); renderActions(acts); renderRecon(); renderExit(lad, c);
-  $('#cAct').textContent = acts.filter(a=>['Open','Actioned'].includes(a.status)).length;
-  $('#cRec').textContent = recon().filter(r=>!r.ok && !r.info).length;
-}
-function renderSource(){
-  const tag = $('#mktTag'), pt = $('#posTag'), bt = $('#bTag');
-  [tag,pt,bt].forEach(t=>{ t.className = 'tag ' + (M.source==='live'?'live':'snap'); t.textContent = M.source==='live' ? (t===pt?'Observed prices':'Observed') : 'Snapshot + estimates'; });
-  $('#srcBox').innerHTML = M.source==='live'
-    ? `Market data <b>Observed, Morpho API</b><br>Pulled ${hhmm(M.at)} · ${dShort(M.at)}` + (M.partial.length ? `<br><span class="warnline" title="${esc(M.partial.join(' | '))}">${M.partial.length} optional data set${M.partial.length>1?'s':''} unavailable (hover)</span>` : '')
-    : `Market data <b>Snapshot, ${SNAP_AT}</b><br><span class="warnline">Morpho API error: ${esc(M.err||'unknown')}</span>`;
-}
-function renderCards(c, acts, lad){
-  const open = acts.filter(a=>['Open','Actioned'].includes(a.status));
-  const breaks = recon().filter(r=>!r.ok && !r.info).length;
-  const safe = c.ltv < POLICY.call && c.buffer >= POLICY.minBuffer;
-  const worth = c.breakeven - c.r >= POLICY.carryReview;
-  const cards = [
-    ['Collateral & LTV', pct(c.ltv), `${pct(c.buffer)} PRIME drop to liquidation · health factor ${c.hf.toFixed(2)}`, 'risk', safe?'good':'crit'],
-    ['Annual Net Carry', susd(c.net), `breakeven borrow APY ${pct(c.breakeven,2)} vs ${pct(c.r,2)}`, 'carry', worth?'good':(c.net<0?'crit':'warn')],
-    ['Open Actions', String(open.length), open.length ? `${usd(open.reduce((a,x)=>a+x.amount,0))} across open items` : 'no open items', 'actions', open.length?'warn':'good'],
-    ['Reconciliation Breaks', breaks ? String(breaks) : '0', breaks ? 'collateral, debt, or interest differs from on-chain' : 'record agrees with on-chain within $1,000', 'recon', breaks?'warn':'good'],
-    ['Exit Timeline', lad.days ? `${lad.days} day${lad.days>1?'s':''}` : 'Stalls', lad.days ? `to repay ${usd(c.debt)} with selected routes; ${tok(lad.released,'PRIME')} released` : 'collateral cannot be released with selected routes', 'exit', lad.days && lad.days <= POLICY.exitDays ? 'good' : 'warn']
+function renderCase(){
+  const live = calcCase(0), c = calcCase(S.drop);
+  // position summary (live)
+  const ltvSt = live.ltv >= POLICY.hard ? 'crit' : live.ltv >= POLICY.call ? 'warn' : live.ltv > POLICY.target ? 'info' : 'good';
+  const tiles = [
+    ['PRIME Collateral', usdM(live.coll), `${tok(S.units,'PRIME')} @ ${P('price','$'+live.price.toFixed(4))}`, null],
+    ['PYUSD Debt', usdM(live.debt), `borrow APY ${P('borrow',pct(live.r,2))}`, null],
+    ['Loan-to-Value', pct(live.ltv), `target ${pct(POLICY.target,0)} · call ${pct(POLICY.call,0)}`, [ltvSt, ltvSt==='good'?'Within target':ltvSt==='info'?'Above target':ltvSt==='warn'?'Call level':'Hard limit']],
+    ['Liquidation Buffer', pct(live.buffer), `estimated PRIME decline to liquidation · minimum ${pct(POLICY.minBuffer,0)}`, live.buffer < POLICY.minBuffer ? ['warn','Review required'] : null]
   ];
-  $('#cards').innerHTML = cards.map(([l,v,s,tab,st])=>`<div class="q" data-go="${tab}"><span class="l">${l}</span><span class="v">${v} ${pill(st, st==='good'?'OK':st==='warn'?'Watch':'Act')}</span><span class="s">${s}</span></div>`).join('');
-}
-function renderRepo(c){
-  const rows = [
-    ['Current haircut', '1 − loan-to-value', pct(1 - c.ltv)],
-    ['Liquidation threshold equivalent haircut', '1 − liquidation LTV', P('lltv', pct(1 - c.lltv))],
-    ['Advance rate', 'Loan-to-value', pct(c.ltv)],
-    ['Margin cushion', 'Health factor / price drop to liquidation', `${c.hf.toFixed(2)} · ${pct(c.buffer)}`],
-    ['Repo rate', 'Borrow APY (utilization-driven)', P('borrow', pct(c.r,2))],
-    ['Asset yield', 'PRIME net yield', P('yield', pct(c.y,2))],
-    ['Carry', 'PRIME income − borrow cost', `${susd(c.net)} / yr`],
-    ['Margin call', 'Mandate call level (Morpho has none; it liquidates)', `${pct(POLICY.call,0)} → restore to ${pct(POLICY.target,0)}`],
-    ['Mark vs executable price', 'Oracle price vs secondary sale price', `${S.stress.disc ? pct(S.stress.disc,2)+' discount assumed' : 'no discount'}`],
-    ['Underlying financing', 'Figure repo facility under PRIME', `≤98% LTV, auto paydown`]
-  ];
-  $('#repoTbl tbody').innerHTML = rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td class="n">${r[2]}</td></tr>`).join('');
-}
-function renderFacts(){
-  $('#srcRow').innerHTML = [SRC.review, SRC.kucoin, SRC.rwa, SRC.cg].map(link).join(' · ');
-}
-function renderMarket(){
-  $('#mktTbl tbody').innerHTML = `<tr><td>PRIME / PYUSD${M.marketId?`<br><span class="note m" title="${esc(M.marketId)}">${short(M.marketId)}</span>`:''}${M.oracle?`<br><span class="note">Oracle <a href="https://etherscan.io/address/${M.oracle}" target="_blank" rel="noopener">${short(M.oracle)}</a></span>`:''}</td>
-    <td class="n">${P('lltv',pct(M.lltv.v))}</td><td class="n">${P('borrow',pct(M.borrow.v,2))}</td><td class="n">${P('util',pct(M.util.v))}</td><td class="n">${P('liq',usdM(M.liq.v))}</td><td class="n">${P('borrowed',usdM(M.borrowed.v))}</td><td class="n">${P('price','$'+M.price.v.toFixed(4))}</td><td class="n"><span title="Observed: RWA.xyz net asset value, Oct 5, 2026">$1.06</span><br><span class="note">Oct 5</span></td><td class="n">${P('vol',usdM(M.vol.v))}</td></tr>`;
-}
-function renderRisk(c){
+  $('#caseTiles').innerHTML = tiles.map(([l,v,s,p])=>`<div class="q nolink"><span class="l">${l}</span><span class="v">${v} ${p?pill(p[0],p[1]):''}</span><span class="s">${s}</span></div>`).join('');
   const max = Math.max(c.lltv, c.ltv) * 1.08;
   const tick = (v, cls, label, below) => `<div class="tick ${cls}${below?' below':''}" style="left:${(v/max*100).toFixed(2)}%"><span>${label}</span></div>`;
   const st = c.ltv >= POLICY.hard ? 'crit' : c.ltv >= POLICY.call ? 'warn' : c.ltv > POLICY.target ? 'info' : 'good';
-  $('#ltvBar').innerHTML = `<div class="ltv"><div class="fill ${st}" style="width:${Math.min(100,c.ltv/max*100).toFixed(2)}%"></div>${tick(POLICY.target,'','Target 62%',true)}${tick(POLICY.call,'w','Call 68%')}${tick(POLICY.hard,'h','Hard 75%',true)}${tick(c.lltv,'l','Liquidation '+pct(c.lltv,1))}</div>
-    <div class="ltvlabel">LTV <b>${pct(c.ltv)}</b> ${pill(st, st==='good'?'At or below target':st==='info'?'Above target, below call':st==='warn'?'Margin call':'Hard limit')}</div>`;
+  $('#ltvBar').innerHTML = `<div class="ltv"><div class="fill ${st}" style="width:${Math.min(100,c.ltv/max*100).toFixed(2)}%"></div>${tick(POLICY.target,'','Target 62%',true)}${tick(POLICY.call,'w','Call 68%')}${tick(POLICY.hard,'h','Hard 75%',true)}${tick(c.lltv,'l','Liquidation LTV '+pct(c.lltv,1))}</div>
+    <div class="ltvlabel">Stressed LTV <b>${pct(c.ltv)}</b></div>`;
+  // stress test
+  $('#cPx').value = S.drop*100; $('#vPx').textContent = (S.drop*100).toFixed(1) + '%';
   const rows = [
-    ['PRIME collateral', `${tok(S.units,'PRIME')} @ $${c.price.toFixed(4)}${S.stress.imp?` (after ${pct(S.stress.imp,1)} impairment)`:''}`, usd(c.coll)],
-    ['PYUSD debt', S.stress.days ? `incl. ${S.stress.days} days of accrual at ${pct(c.r,2)}` : 'principal plus accrued interest', usd(c.debt)],
-    ['Equity', 'collateral − debt', usd(c.equity)],
-    ['Loan-to-value', `mandate target ${pct(POLICY.target,0)}`, pct(c.ltv)],
-    ['Health factor', 'liquidation LTV × collateral ÷ debt', c.hf.toFixed(3)],
-    ['PRIME drop to liquidation', `mandate minimum ${pct(POLICY.minBuffer,0)}`, pct(c.buffer)],
-    ['Client PYUSD on hand', 'available for repayment', usd(S.cash)]
+    ['PRIME price', `$${c.price.toFixed(4)}`],
+    ['Collateral value', usd(c.coll)],
+    ['Loan-to-value', `<b>${pct(c.ltv)}</b>`],
+    ['Estimated liquidation buffer', c.buffer > 0 ? pct(c.buffer) : '<b>exhausted</b>'],
+    ['To restore 62%: post PRIME', c.addColl ? `${usd(c.addColl)} · ${tok(c.addColl/c.price,'PRIME')}` : 'none needed'],
+    ['To restore 62%: or repay PYUSD', c.repay ? usd(c.repay) : 'none needed']
   ];
-  $('#posTbl tbody').innerHTML = rows.map(r=>`<tr><td>${r[0]}</td><td class="note">${esc(r[1])}</td><td class="n"><b>${r[2]}</b></td></tr>`).join('');
-  const need = [
-    ['Collateral to add to reach 62%', c.addColl ? `${usd(c.addColl)} · ${tok(c.addColl/c.price,'PRIME')}` : 'none', 'Client posts PRIME; no sale needed'],
-    ['Debt to repay to reach 62%', c.repay ? usd(c.repay) : 'none', `Client PYUSD on hand ${usd(S.cash)}${c.repay > S.cash ? '; the rest needs PRIME sales or a funding line' : ''}`],
-    ['PRIME price at margin call (68%)', '$'+(c.debt/(S.units*POLICY.call)).toFixed(4), c.ltv >= POLICY.call ? 'stressed price is already below this level' : `${pct(1 - (c.debt/(S.units*POLICY.call))/c.price)} below the stressed price`],
-    ['PRIME price at liquidation', '$'+(c.debt/(S.units*c.lltv)).toFixed(4), `${pct(c.buffer)} below the stressed price`],
-    ['Days of accrual to reach call level', (()=>{ if(c.ltv >= POLICY.call) return 'already above'; if(c.r <= 0) return 'n/a'; const d = Math.log(POLICY.call/c.ltv)/Math.log(1+c.r)*365; return d > 3650 ? '10+ years' : Math.round(d) + ' days'; })(), 'interest alone, prices unchanged']
-  ];
-  $('#needTbl tbody').innerHTML = need.map(r=>`<tr><td>${r[0]}</td><td class="n"><b>${r[1]}</b></td><td class="note">${esc(r[2])}</td></tr>`).join('');
-  ['Imp','Rate','Days','Disc'].forEach(k=>{
-    const s = S.stress; const v = k==='Imp'? s.imp*100 : k==='Rate' ? rateNow()*100 : k==='Days' ? s.days : s.disc*100;
-    $('#s'+k).value = v; $('#v'+k).textContent = k==='Days' ? v : (k==='Rate'? v.toFixed(2) : v.toFixed(1)) + '%';
-  });
-}
-function renderBorrowers(c){
-  const b = M.borrowers;
-  if(!b || !b.length){ $('#borTbl tbody').innerHTML = `<tr><td colspan="6" class="note">${M.source==='live' ? 'Borrower positions not available from the API right now.' : 'Available with live data only.'}</td></tr>`; return; }
-  const total = M.borrowed.v || b.reduce((a,x)=>a+x.debt,0);
-  $('#borTbl tbody').innerHTML = b.map(x=>`<tr><td class="m"><a href="https://etherscan.io/address/${x.addr}" target="_blank" rel="noopener">${short(x.addr)}</a></td><td class="n">${usdM(x.debt)}</td><td class="n">${pct(x.debt/total)}</td><td class="n">${x.collUSD!=null?usdM(x.collUSD):'n/a'}</td><td class="n" title="Calculated: collateral × API price (oracle proxy) × LLTV ÷ debt">${x.hf!=null?x.hf.toFixed(3):'n/a'}</td><td class="n">${x.hf!=null&&x.hf>0?pct(1-1/x.hf):'n/a'}</td></tr>`).join('')
-    + `<tr class="total"><td>Simulated client (for comparison)</td><td class="n">${usdM(c.debt)}</td><td class="n"></td><td class="n">${usdM(c.coll)}</td><td class="n">${c.hf.toFixed(3)}</td><td class="n">${pct(c.buffer)}</td></tr>`;
-}
-function renderCarry(c){
-  const rows = [
-    ['Collateral value', usd(c.coll), ''],
-    ['PRIME net yield', P('yield', pct(c.y,2)), 'Income on the full collateral'],
-    ['Annual PRIME income', usd(c.income), ''],
-    ['PYUSD debt', usd(c.debt), ''],
-    ['Borrow APY', P('borrow', pct(c.r,2)) + (S.stress.rate!=null?' <span class="tag sim">stressed</span>':''), 'Utilization-driven; resets continuously'],
-    ['Annual borrow cost', usd(c.cost), ''],
-    ['Net carry', `<b>${susd(c.net)}</b>`, `${susd(c.net/365)} per day`],
-    ['Return on equity', c.roe!=null ? pct(c.roe,2) : 'n/a', `on ${usd(c.equity)} of client equity`],
-    ['Breakeven borrow APY', pct(c.breakeven,2), `PRIME yield × collateral ÷ debt; cushion ${bp(c.breakeven - c.r)}`],
-    ['Verdict', c.breakeven - c.r >= POLICY.carryReview ? pill('good','Worthwhile') : c.net >= 0 ? pill('warn','Thin: review') : pill('crit','Negative carry'), `Review trigger: cushion under ${bp(POLICY.carryReview)}`]
-  ];
-  $('#carryTbl tbody').innerHTML = rows.map(r=>`<tr><td>${r[0]}</td><td class="n">${r[1]}</td><td class="note">${r[2]}</td></tr>`).join('');
-  const rT = rateAtTarget();
-  const us = [.80, .85, .90, .92, .95, .98, 1.0];
-  if(!us.some(u=>Math.abs(u-M.util.v)<.002)) us.push(M.util.v);
-  us.sort((a,b)=>a-b);
-  $('#irmTbl tbody').innerHTML = us.map(u=>{ const r = apyAt(u); const cost = c.debt*r, net = c.income - cost, roe = c.equity>0 ? net/c.equity : null; const cur = Math.abs(u-M.util.v)<.002;
-    return `<tr${cur?' class="cur"':''}><td class="n">${pct(u)}${cur?' <span class="note">now</span>':''}</td><td class="n">${pct(r,2)}</td><td class="n">${usd(cost)}</td><td class="n">${susd(net)}</td><td class="n">${roe!=null?pct(roe,1):'n/a'}</td><td>${c.breakeven - r >= POLICY.carryReview ? pill('good','Worthwhile') : net >= 0 ? pill('warn','Thin') : pill('crit','Negative')}</td></tr>`; }).join('')
-    + `<tr><td colspan="6" class="note">Rate at target implied from current rate and utilization: ${pct(rT,2)} APY. If utilization stays at 100% for five days, the target rate roughly doubles, so the 100% row would read about ${pct(apyAt(1, 2),1)}. The curve is applied to the underlying per-second rate and converted to APY. ${link(SRC.irm)}</td></tr>`;
-}
-function renderActions(acts){
-  $('#actTbl tbody').innerHTML = acts.length ? acts.map(a=>{
-    const st = a.status==='Resolved' ? pill('good','Resolved') : a.status==='Accepted' ? pill('info','Accepted, monitoring') : a.status==='Actioned' ? pill('info','Actioned, verifying') : pill(a.sev, 'Open');
-    const late = a.status==='Open' && a.deadline < new Date();
-    const res = a.status==='Resolved' ? `<span class="note">${esc(a.note)}</span>` :
-      `<select data-act="${a.id}"><option value="">Choose resolution...</option>${a.opts.map(o=>`<option value="${o}">${esc(OPT[o].label)}</option>`).join('')}</select>${a.hint?`<div class="note" style="margin-top:4px">To deleverage by selling PRIME, plan it in the <a href="#" data-go="exit">Exit Plan</a>.</div>`:''}${a.note?`<div class="note" style="margin-top:4px">${esc(a.note)}</div>`:''}`;
-    return `<tr><td class="m">${a.id}</td><td>${esc(a.issue)}</td><td class="n"><b>${usd(a.amount)}</b><br><span class="note">${esc(a.amtNote)}</span></td><td>${esc(a.owner)}</td><td>${dl(a.deadline)}${late?' '+pill('crit','Late'):''}</td><td>${st}</td><td style="min-width:220px">${res}</td></tr>`;
-  }).join('') : `<tr><td colspan="7">${pill('good','Clear')} No actions required in this scenario. Try the stress presets on the Margin &amp; Stress tab.</td></tr>`;
-}
-function renderRecon(){
-  $('#recTbl tbody').innerHTML = recon().map(r=>`<tr><td>${r.item}</td><td class="n">${r.rec}</td><td class="n">${r.chain}</td><td class="n">${r.diffTxt}</td><td>${r.ok ? pill('good','Matched') : r.info ? pill('info','Update rate') : pill('warn','Break')}</td><td class="note">${esc(r.why)}</td></tr>`).join('');
-  $('#evTbl tbody').innerHTML = S.events.slice().reverse().map(e=>`<tr><td>${dShort(e.t)}, ${hhmm(e.t)}</td><td>${esc(e.text)}</td><td class="n">${esc(e.amt)}</td><td class="m">${e.hash?short(e.hash):''}</td><td>${e.chain==null?'n/a':e.chain?pill('good','Confirmed'):''}</td><td>${e.booked?pill('good','Booked'):pill('warn','Not booked')}</td></tr>`).join('');
-}
-function renderExit(lad, c){
+  $('#stressTbl tbody').innerHTML = rows.map(r=>`<tr><td>${r[0]}</td><td class="n">${r[1]}</td></tr>`).join('');
+  $('#respList').innerHTML = caseResponse(c).map(([cls,lab,txt])=>`<li>${pill(cls,lab)}<span>${esc(txt)}</span></li>`).join('');
+  // supporting detail (live)
+  $('#repoTbl tbody').innerHTML = [
+    ['Haircut and advance rate', 'Loan-to-value', `${pct(live.ltv)} LTV · ${pct(1-live.ltv)} haircut`],
+    ['Collateral cushion before a margin call', 'Price decline to the liquidation LTV (no margin call; the position becomes eligible for liquidation)', `${pct(live.buffer)} · health factor ${live.hf.toFixed(2)}`],
+    ['Repo rate', 'Borrow APY, reset continuously by utilization', P('borrow', pct(live.r,2))]
+  ].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td class="n">${r[2]}</td></tr>`).join('');
+  const cush = live.breakeven - live.r;
+  $('#carryTbl tbody').innerHTML = [
+    ['Collateral value', usd(live.coll), ''],
+    ['PRIME net yield', P('yield', pct(live.y,2)), 'income on the full collateral'],
+    ['Annual PRIME income', usd(live.income), ''],
+    ['Borrow APY', P('borrow', pct(live.r,2)), 'utilization-driven'],
+    ['Annual borrow cost', usd(live.cost), `on ${usd(live.debt)} of debt`],
+    ['Net carry', `<b>${susd(live.net)}</b>`, `${susd(live.net/365)} per day`],
+    ['Breakeven borrow APY', pct(live.breakeven,2), 'PRIME yield × collateral ÷ debt'],
+    ['Cushion to breakeven', bp(cush).replace('+','') + (cush < POLICY.carryReview ? ' ' + pill('warn','Review required') : ''), `review below ${bp(POLICY.carryReview).replace('+','')}`]
+  ].map(r=>`<tr><td>${r[0]}</td><td class="n">${r[1]}</td><td class="note">${r[2]}</td></tr>`).join('');
+  const r100 = apyAt(1), net100 = live.income - live.debt*r100;
+  $('#carryNote').innerHTML = `If utilization reached 100%, the borrow rate would rise to about ${pct(r100,2)} APY (4x the rate at the 90% target), and net carry would be ${susd(net100)} per year. ${link(SRC.irm)}`;
+  const lad = ladder(c);
   $('#cashNote').textContent = `(${usd(S.cash)})`;
   $('#exitSummary').innerHTML = `<div class="kv">
-    <span class="k">Debt to repay</span><span><b>${usd(c.debt)}</b></span>
-    <span class="k">PRIME 24h volume</span><span>${P('vol',usdM(M.vol.v))} <span class="note">mostly Orca PYUSD/PRIME and Uniswap PRIME/USDC</span></span>
-    <span class="k">Daily sale capacity (assumed)</span><span>${usd(lad.secCap + lad.redCap)} (${lad.secCap?`secondary ${usd(lad.secCap)}`:''}${lad.secCap&&lad.redCap?' + ':''}${lad.redCap?`redemption ${usd(lad.redCap)}`:''}${!lad.secCap&&!lad.redCap?'none selected':''})</span>
-    <span class="k">Days to full exit</span><span>${lad.days ? `<b>${lad.days}</b> ${lad.days<=POLICY.exitDays?pill('good','Within policy'):pill('warn','Over '+POLICY.exitDays+'-day policy')}` : pill('crit','Stalls')}</span>
+    <span class="k">Debt to repay</span><span>${usd(c.debt)}</span>
+    <span class="k">Daily sale capacity</span><span>${usd(lad.secCap + lad.redCap)} <span class="tag sim">assumption</span></span>
+    <span class="k">Days to full exit</span><span>${lad.days ? `${lad.days}${lad.days > POLICY.exitDays ? ' ' + pill('warn','Review required') + ` <span class="note">policy ${POLICY.exitDays} days</span>` : ''}` : pill('crit','Stalls: no route can release collateral')}</span>
     <span class="k">Sale discount + carry cost</span><span>${usd(lad.cost)}</span>
-    <span class="k">PRIME released at the end</span><span>${tok(lad.released,'PRIME')} (${usd(lad.released*c.price)})</span>
-    <span class="k">Atomic unwind</span><span>${pill('warn','Execution feasibility unverified')} <span class="note">needs one sale of about ${usd(c.debt)}; 24h volume (${usdM(M.vol.v)}) does not show depth available for a single trade</span></span></div>
-    ${lad.stuck ? `<div class="callout crit">The ladder stalls: with LTV above the 62% target, no collateral can be withdrawn and no outside cash is selected. Add client cash or a funding line to bring LTV down first.</div>` : ''}`;
-  $('#ladTbl tbody').innerHTML = lad.rows.slice(0,40).map(r=>`<tr><td>${r.day}</td><td class="n">${r.ext?usd(r.ext):''}</td><td class="n">${r.wUnits?tok(r.wUnits,'PRIME'):''}</td><td class="n">${r.proceeds?usd(r.proceeds):''}</td><td class="n">${usd(r.repaid)}</td><td class="n">${usd(r.debt)}</td><td class="n">${r.debt?pct(r.ltv):'Closed'}</td></tr>`).join('')
-    + (lad.rows.length > 40 ? `<tr><td colspan="7" class="note">${lad.rows.length - 40} more days not shown</td></tr>` : '');
+    <span class="k">Atomic unwind</span><span class="note">Needs one PRIME sale of about ${usd(c.debt)}; 24h volume (${usdM(M.vol.v)}) does not show that depth.</span></div>`
+    + (S.drop ? `<p class="note">At the stressed PRIME price (${pct(S.drop)} decline).</p>` : '');
 }
 
 /* ================= wiring ================= */
-function showTab(name){ $$('nav.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===name)); $$('section.tab').forEach(s=>s.classList.toggle('on', s.id==='tab-'+name)); window.scrollTo({top: $('nav.tabs').offsetTop - 10, behavior:'smooth'}); }
+function showTab(name){ $$('nav.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===name)); $$('section.tab').forEach(s=>s.classList.toggle('on', s.id==='tab-'+name));
+  $('#scenBar').style.display = name==='case' ? 'none' : ''; window.scrollTo({top: $('nav.tabs').offsetTop - 10, behavior:'smooth'}); }
 $$('nav.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
-document.addEventListener('click', e=>{ const g = e.target.closest('[data-go]'); if(g) showTab(g.dataset.go);
-  const p = e.target.closest('[data-preset]'); if(p){ preset(p.dataset.preset); } });
-document.addEventListener('change', e=>{ const s = e.target.closest('[data-act]'); if(s && s.value) applyOpt(s.dataset.act, s.value);
-  if(['rCash','rSec','rRed','rLine','secPct','redCap','lineAmt'].includes(e.target.id)) render(); });
+document.addEventListener('click', e=>{
+  const g = e.target.closest('[data-go]'); if(g){ e.preventDefault(); showTab(g.dataset.go); return; }
+  const s = e.target.closest('[data-step]'); if(s && !s.disabled){ step(s.dataset.id, s.dataset.step); return; }
+  const rf = e.target.closest('[data-refresh]'); if(rf && !rf.disabled){ manualRefresh(); }
+});
+$('#scShock').addEventListener('change', e=>{ SC.shock = parseFloat(e.target.value)||0; render(); });
+$('#scDrain').addEventListener('change', e=>{ SC.drain = e.target.checked; render(); });
+$('#capIn').addEventListener('input', render);
+document.addEventListener('change', e=>{ if(['rCash','rSec','rRed','rLine','secPct','redCap','lineAmt'].includes(e.target.id)) render(); });
 ['secPct','redCap','lineAmt'].forEach(id=>$('#'+id).addEventListener('input', render));
-$('#sImp').addEventListener('input', e=>{ $('#presetNote').textContent=''; setStress({...S.stress, imp:(+e.target.value)/100}); });
-$('#sRate').addEventListener('input', e=>{ $('#presetNote').textContent=''; setStress({...S.stress, rate:(+e.target.value)/100}); });
-$('#sDays').addEventListener('input', e=>{ setStress({...S.stress, days:+e.target.value}); });
-$('#sDisc').addEventListener('input', e=>{ setStress({...S.stress, disc:(+e.target.value)/100}); });
-function preset(k){
-  const rT = rateAtTarget();
-  let next = S.stress;
-  if(k==='live'){ next = {imp:0, rate:null, days:0, disc:.01}; $('#presetNote').textContent = ''; }
-  if(k==='credit'){ next = {...S.stress, imp:.12, rate:null}; $('#presetNote').textContent = 'Credit event: a 12% NAV writedown, for example HELOC losses or a securitization stall that forces loans to be marked down.'; }
-  if(k==='squeeze'){ next = {...S.stress, imp:0, rate: apyAt(1)}; $('#presetNote').textContent = `Funding squeeze: lenders withdraw and utilization hits 100%. The underlying rate goes to 4x the target rate, which is ${pct(apyAt(1),2)} as APY (target ${pct(rT,2)}).`; }
-  if(k==='combined'){ next = {imp:.12, rate: apyAt(1), days:30, disc:.03}; $('#presetNote').textContent = 'Combined: 12% writedown, 100% utilization, 30 days of accrual, and a 3% discount on PRIME sales.'; }
-  setStress(next);
-}
+$('#cPx').addEventListener('input', e=>{ S.drop = (+e.target.value)/100; render(); });
+$('#cDisc').addEventListener('input', e=>{ const v = parseFloat(e.target.value); S.disc = isFinite(v) && v >= 0 ? Math.min(v, 50)/100 : 0; render(); });
 
 async function boot(){
-  try{ await loadLive(); } catch(e){ M.source = 'snapshot'; M.err = e.message; ['price','vol','util','lltv','borrow','liq','borrowed'].forEach(k=>M[k] = {...SNAP[k]}); console.warn('Live market data unavailable:', e.message); }
-  seed(); render();
+  try{ await loadLive(); }
+  catch(e){ D.err = e.message; D.partial = []; loadSnap(); console.warn('Live market data unavailable:', e.message); }
+  syncM(); seed();
+  $('#capIn').value = ((D.cg.vol.v||0) * .25 / 1e6).toFixed(2);
+  render();
 }
 boot();
 })();
