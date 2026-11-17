@@ -293,7 +293,7 @@ h3.sub{font-size:13px;margin:10px 0 4px;color:var(--ink2)}
     <div class="card mt">
       <h2>PRIME Markets in the Vault <span class="tag" id="mktTag">Observed</span></h2>
       <p class="lead">The Morpho markets where the PRIME Main vault lends PYUSD against PRIME.</p>
-      <div class="tbl-wrap"><table class="data" id="mktTbl"><thead><tr><th>Market</th><th class="n">Liquidation LTV</th><th class="n">Borrow APY</th><th class="n">Utilization</th><th class="n">Available liquidity</th><th class="n">Total borrowed</th><th class="n">PRIME price</th><th class="n">PRIME NAV</th><th class="n">PRIME 24h volume</th></tr></thead><tbody></tbody></table></div>
+      <div class="tbl-wrap"><table class="data" id="mktTbl"><thead><tr><th>Market</th><th class="n">Liquidation LTV</th><th class="n">Borrow APY</th><th class="n">Utilization</th><th class="n">Available liquidity</th><th class="n">Total borrowed</th><th class="n">PRIME price</th><th class="n">PRIME 24h volume</th></tr></thead><tbody></tbody></table></div>
       <details class="bg">
         <summary>PRIME Background</summary>
         <ul class="facts">
@@ -427,7 +427,7 @@ h3.sub{font-size:13px;margin:10px 0 4px;color:var(--ink2)}
             <label class="ck"><input type="checkbox" id="rSec" checked> Sell PRIME in secondary markets at up to <input type="number" id="secPct" value="25" min="1" max="100" step="1" style="width:56px">% of observed 24h volume per day</label>
             <label class="ck"><input type="checkbox" id="rRed"> Redeem PRIME with the issuer, <input type="number" id="redCap" value="0" min="0" step="0.5" style="width:64px"> $M per day (capacity not published)</label>
             <label class="ck"><input type="checkbox" id="rLine"> Outside PYUSD funding line, <input type="number" id="lineAmt" value="3" min="0" step="0.5" style="width:64px"> $M on day 1</label>
-            <label class="ck">Sale discount to NAV <input type="number" id="cDisc" value="1" min="0" max="20" step="0.25" style="width:64px">%</label>
+            <label class="ck">Sale discount to market price <input type="number" id="cDisc" value="1" min="0" max="20" step="0.25" style="width:64px">%</label>
           </div>
           <div id="exitSummary"></div>
         </div>
@@ -660,8 +660,6 @@ function checks(){
   if(D.cg.updated){ const age = (Date.now() - D.cg.updated.getTime())/60000;
     add('PRIME price freshness', age <= W.ageMin ? 'pass' : 'flag', `${Math.round(age)} min old`, `CoinGecko last update ${hhmm(D.cg.updated)}; watch level ${W.ageMin} min. The Morpho API used here does not expose the oracle's update time.`, 'CoinGecko'); }
   else add('PRIME price freshness', 'na', 'No timestamp', 'Price update time not available', 'CoinGecko');
-  const navAge = (NOW - NAV.date)/86400000;
-  add('PRIME NAV reference', navAge <= W.navDays ? 'pass' : 'flag', `${Math.floor(navAge)} day${Math.floor(navAge)===1?'':'s'} old`, `NAV of $${NAV.v.toFixed(2)} is a dated reference (${NAV.why}); refresh before relying on it. Watch level ${W.navDays} days.`, 'RWA.xyz');
   if(D.source==='live' && c.tvl){ const diff = c.tvl - c.mapped;
     add('Vault reconciliation', Math.abs(diff)/c.tvl <= W.recon ? 'pass' : 'flag', `${susd(diff)} (${pct(Math.abs(diff)/c.tvl,2)})`, `Total assets ${usdM(c.tvl)} vs market positions plus idle ${usdM(c.mapped)}; tolerance ${pct(W.recon,1)}`, 'Morpho API'); }
   else add('Vault reconciliation', 'na', 'Not run', 'Snapshot values come from different sources and times', 'Morpho API');
@@ -836,7 +834,7 @@ function renderMarket(c){
   $('#mktTbl tbody').innerHTML = c.prime.map(x=>{ const m = x.m;
     return `<tr><td>${esc(m.coll)} / ${esc(m.loan)}${m.id?`<br><span class="note m" title="${esc(m.id)}">${short(m.id)}</span>`:''}${m.oracle?`<br><span class="note">Oracle <a href="https://etherscan.io/address/${m.oracle}" target="_blank" rel="noopener">${short(m.oracle)}</a></span>`:''}</td>
       <td class="n">${show(m.lltv,pct(m.lltv.v))}</td><td class="n">${show(m.apy,pct(m.apy.v,2))}</td><td class="n">${SC.drain?'100.0%<sup class="est">scenario</sup>':show(m.util,pct(m.util.v))}</td><td class="n">${SC.drain?'$0.00M<sup class="est">scenario</sup>':show(m.liqM,usdM(m.liqM.v))}</td><td class="n">${show(m.borrow,usdM(m.borrow.v))}</td>
-      <td class="n">${show(m.price,'$'+(m.price.v||0).toFixed(4))}${SC.shock?`<br><span class="note">scenario $${(m.price.v*(1-SC.shock)).toFixed(4)}</span>`:''}</td><td class="n"><span title="Observed: ${esc(NAV.why)}">$${NAV.v.toFixed(2)}</span><br><span class="note">Oct 5</span></td><td class="n">${show(D.cg.vol,usdM(D.cg.vol.v))}</td></tr>`; }).join('');
+      <td class="n">${show(m.price,'$'+(m.price.v||0).toFixed(4))}${SC.shock?`<br><span class="note">scenario $${(m.price.v*(1-SC.shock)).toFixed(4)}</span>`:''}</td><td class="n">${show(D.cg.vol,usdM(D.cg.vol.v))}</td></tr>`; }).join('');
 }
 function renderVault(c){
   $('#allocTbl tbody').innerHTML = c.ms.map(x=>{ const m = x.m;
@@ -899,7 +897,7 @@ function renderChecks(ch){
     ['Borrower concentration', `largest position above ${pct(W.top,0)} of market debt`],
     ['Price stress', 'shortfall or more than one day of liquidation sales if PRIME falls 10%'],
     ['Reconciliation tolerance', pct(W.recon,1)],
-    ['Price checks', `sources more than ${pct(W.dev,0)} apart; price older than ${W.ageMin} minutes; NAV reference older than ${W.navDays} days`],
+    ['Price checks', `sources more than ${pct(W.dev,0)} apart; price older than ${W.ageMin} minutes`],
     ['Borrower coverage', `listed positions under ${pct(W.coverage,0)} of market debt`]
   ];
   $('#wlTbl tbody').innerHTML = wl.map(r=>`<tr><td>${r[0]}</td><td class="note">${esc(r[1])}</td></tr>`).join('');
