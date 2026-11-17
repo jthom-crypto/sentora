@@ -527,26 +527,50 @@ async function loadLive(){
   const list = Object.values(pos).filter(x=>x.vs > 1000 || isPrime(x));
   if(!list.some(isPrime)) throw new Error('No PRIME market found in the vault allocations');
   // 3) market parameters and state
-  const q = '{ ' + list.map((x,i)=>`m${i}: marketById(marketId:"${x.id}", chainId:1){ lltv oracle { address } collateralAsset { decimals priceUsd } state { borrowApy utilization liquidityAssetsUsd collateralAssetsUsd borrowAssetsUsd } }`).join(' ') + ' }';
+  const q = '{ ' + list.map((x,i)=>`m${i}: marketById(marketId:"${x.id}", chainId:1){ lltv oracle { address } collateralAsset { decimals } loanAsset { decimals } state { borrowApy utilization liquidityAssetsUsd borrowAssetsUsd } }`).join(' ') + ' }';
   const md = await gql(q);
   D.markets = list.map((x,i)=>{ const m = md['m'+i] || {}; const st = m.state || {}; const s = k => `${src} (${k})`;
     return {id:x.id, coll:x.coll, loan:x.loan, vaultSupply:fv(x.vs,'obs',src+' (adapter position supplyAssetsUsd)'),
-      lltv:fv(frac(m.lltv),'obs',s('lltv')), price:fv(num(m.collateralAsset && m.collateralAsset.priceUsd),'obs',s('collateralAsset.priceUsd: API USD price used as an oracle proxy')),
-      collDec: m.collateralAsset && m.collateralAsset.decimals!=null ? Number(m.collateralAsset.decimals) : null, oracle: m.oracle && m.oracle.address,
+      lltv:fv(frac(m.lltv),'obs',s('lltv')), price:NA('PRIME price not loaded'),
+      collDec: m.collateralAsset && m.collateralAsset.decimals!=null ? Number(m.collateralAsset.decimals) : null, loanDec: m.loanAsset && m.loanAsset.decimals!=null ? Number(m.loanAsset.decimals) : null, oracle: m.oracle && m.oracle.address,
       util:fv(frac(st.utilization),'obs',s('state.utilization')), apy:fv(frac(st.borrowApy),'obs',s('state.borrowApy')),
       liqM:fv(num(st.liquidityAssetsUsd),'obs',s('state.liquidityAssetsUsd')), borrow:fv(num(st.borrowAssetsUsd),'obs',s('state.borrowAssetsUsd')),
-      collUsd:fv(num(st.collateralAssetsUsd),'obs',s('state.collateralAssetsUsd')), supply:NA('Market supply total not loaded'), borrowers:null}; });
+      collUsd:NA('Market collateral total not loaded'), supply:NA('Market supply total not loaded'), borrowers:null}; });
   D.source = 'live'; D.at = t;
+  // 3b) PRIME USD price, queried on its own so a schema change here cannot take the whole page down.
+  //     Morpho's current schema uses price { usd }; the older priceUsd field is tried as a fallback.
+  const pq = sel => '{ ' + D.markets.map((m,i)=>`m${i}: marketById(marketId:"${m.id}", chainId:1){ collateralAsset { ${sel} } }`).join(' ') + ' }';
+  let pd = null, pfield = 'price.usd';
+  try{ pd = await gql(pq('price { usd }')); }
+  catch(e){ try{ pd = await gql(pq('priceUsd')); pfield = 'priceUsd'; } catch(e2){ D.partial.push('PRIME price: ' + e.message); } }
+  if(pd) D.markets.forEach((m,i)=>{ const a = pd['m'+i] && pd['m'+i].collateralAsset; if(!a) return;
+    const v = pfield==='price.usd' ? (a.price && a.price.usd) : a.priceUsd;
+    m.price = fv(num(v),'obs',`${src} (collateralAsset.${pfield}: API USD price used as an oracle proxy)`); });
   // 4) optional: market supply totals (for each supplier's share)
   try{ const sd = await gql('{ ' + D.markets.map((m,i)=>`m${i}: marketById(marketId:"${m.id}", chainId:1){ state { supplyAssetsUsd } }`).join(' ') + ' }');
     D.markets.forEach((m,i)=>{ const x = sd['m'+i]; const v = num(x && x.state && x.state.supplyAssetsUsd); if(v!=null) m.supply = fv(v,'obs',src+' (state.supplyAssetsUsd)'); }); }
   catch(e){ D.partial.push('Market supply totals: ' + e.message); }
+  try{ const cd = await gql('{ ' + D.markets.map((m,i)=>`m${i}: marketById(marketId:"${m.id}", chainId:1){ state { collateralAssetsUsd } }`).join(' ') + ' }');
+    D.markets.forEach((m,i)=>{ const x = cd['m'+i]; const v = num(x && x.state && x.state.collateralAssetsUsd); if(v!=null) m.collUsd = fv(v,'obs',src+' (state.collateralAssetsUsd)'); }); }
+  catch(e){ D.partial.push('Market collateral totals: ' + e.message); }
   // 5) optional: largest borrowers in each PRIME market
   for(const m of D.markets.filter(isPrime)){
-    try{ const b = await gql(`{ p: marketPositions(first: 20, orderBy: BorrowShares, orderDirection: Desc, where: { marketUniqueKey_in: ["${m.id}"] }){ items { user { address } state { collateral borrowAssetsUsd } } } }`);
+    try{
       if(m.collDec==null) throw new Error('collateral decimals not observed');
-      m.borrowers = ((b.p && b.p.items)||[]).filter(x=>x.state && num(x.state.borrowAssetsUsd) > 1000)
-        .map(x=>({addr:x.user && x.user.address, debt:num(x.state.borrowAssetsUsd), units:Number(x.state.collateral)/Math.pow(10, m.collDec)}));
+      // Morpho's schema has changed over time; try the current filter shape first, then older ones.
+      const tries = [
+        `{ p: marketPositions(first: 500, where: { marketId_in: ["${m.id}"], chainId_in: [1] }){ items { user { address } state { collateral borrowAssets } } } }`,
+        `{ p: marketPositions(first: 500, where: { marketUniqueKey_in: ["${m.id}"] }){ items { user { address } state { collateral borrowAssets } } } }`,
+        `{ p: marketPositions(first: 20, orderBy: BorrowShares, orderDirection: Desc, where: { marketUniqueKey_in: ["${m.id}"] }){ items { user { address } state { collateral borrowAssetsUsd } } } }`
+      ];
+      let b = null, err = null;
+      for(const q of tries){ try{ b = await gql(q); break; } catch(e){ err = err || e; } }
+      if(!b) throw err;
+      const ld = m.loanDec!=null ? m.loanDec : 6;      // PYUSD has 6 decimals; debt valued at $1 per PYUSD
+      m.borrowers = ((b.p && b.p.items)||[]).map(x=>{ const st = x.state || {};
+          const debt = st.borrowAssetsUsd!=null ? num(st.borrowAssetsUsd) : (st.borrowAssets!=null ? Number(st.borrowAssets)/Math.pow(10, ld) : null);
+          return {addr:x.user && x.user.address, debt, units:Number(st.collateral||0)/Math.pow(10, m.collDec)}; })
+        .filter(x=>x.debt!=null && x.debt > 1000).sort((a,b)=>b.debt-a.debt).slice(0,20);
     }catch(e){ D.partial.push('Borrower positions: ' + e.message); }
   }
   // 6) optional: PRIME market price, volume, and update time
